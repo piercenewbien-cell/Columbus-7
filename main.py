@@ -10,14 +10,48 @@ class Subsystem:
     def log_threat(self, threat):
         self.threat_log.append(f"Threat detected: {threat}")
 
+class GuardianKey:
+    def __init__(self, name, role, description):
+        self.name = name
+        self.role = role
+        self.description = description
+        self.synchronized = False
+
+    def synchronize(self):
+        # Simulate a cryptographic synchronization process
+        self.synchronized = True
+        return True
+
 class GuardianWallet:
     def __init__(self, initial_balance=10.0):
         self.balance_btc = initial_balance
         self.transaction_log = []
+        self.keys = [
+            GuardianKey("Atlas Key", "Network authentication", "Atlas confirms that the transaction request originates from a legitimate system process and not an external intrusion."),
+            GuardianKey("Sentinel Key", "Threat clearance", "Sentinel scans the request for fraud patterns, malware signatures, or suspicious transaction behaviors."),
+            GuardianKey("Helios Key", "Blockchain integrity verification", "Helios ensures the transaction aligns with the rules of the blockchain network and cannot destabilize consensus."),
+            GuardianKey("Aegis Key", "User protection validation", "Aegis ensures that treasury use does not harm users or violate the Columbus-7 protection directive."),
+            GuardianKey("Oracle Key", "Predictive risk analysis", "Oracle simulates the long-term consequences of the transaction before authorization."),
+            GuardianKey("Nexus Key", "Cross-chain coordination", "Nexus verifies that the transaction will not trigger conflicts between interconnected blockchain networks."),
+            GuardianKey("Crown Key", "Final authorization", "The Crown Node integrates the approvals of the other six nodes and executes the treasury transaction.")
+        ]
+
+    def _synchronize_keys(self):
+        print("Initiating Columbus-7 Quantum Node synchronization...")
+        for key in self.keys:
+            time.sleep(0.1)
+            key.synchronize()
+            print(f"[OK] {key.name} synchronized: {key.role}")
+        return True
 
     def process_tx(self, tx_id, amount, source):
-        self.balance_btc += amount
-        self.transaction_log.append(f"ID: {tx_id}, Amount: {amount} BTC, Source: {source}")
+        print(f"\nAttempting to access treasury for Transaction {tx_id}...")
+        if self._synchronize_keys():
+            self.balance_btc += amount
+            self.transaction_log.append(f"ID: {tx_id}, Amount: {amount} BTC, Source: {source}")
+            print(f"Treasury accessed. Final Authorization: Crown Node executed.")
+            return True
+        return False
 
 class PopulationLedger:
     def __init__(self):
@@ -46,15 +80,24 @@ class LieDetector:
 
 class ColumbusOmega:
     def __init__(self):
-        self.subsystems = [Subsystem("Network"), Subsystem("Security"), Subsystem("Infrastructure")]
+        # Updated Subsystems
+        self.subsystems = [
+            Subsystem("Sentinel-P"),
+            Subsystem("Veritas Engine"),
+            Subsystem("OSSEOCORE"),
+            Subsystem("MORPHOCORE"),
+            Subsystem("TOMBCORE"),
+            Subsystem("LABYRINTHCORE"),
+            Subsystem("CINDERCOR")
+        ]
         self.wallet = GuardianWallet()
         self.population_ledger = PopulationLedger()
         self.crime_map = CrimeMap()
         self.lie_detector = LieDetector()
 
     def process_transaction(self, tx_id, amount, source):
-        self.wallet.process_tx(tx_id, amount, source)
-        print(f"Processed transaction {tx_id}")
+        if self.wallet.process_tx(tx_id, amount, source):
+            print(f"Processed transaction {tx_id}")
 
     def global_monitoring_loop(self, threats):
         for threat in threats:
@@ -79,7 +122,7 @@ class ColumbusOmega:
 def interactive_menu(columbus_omega: ColumbusOmega):
     while True:
         print("\n=== Columbus-Ω Simulation Menu ===")
-        print("1. Process a transaction")
+        print("1. Process a transaction (Treasury Access)")
         print("2. Trigger a threat")
         print("3. Update citizen activity")
         print("4. Log a crime")
