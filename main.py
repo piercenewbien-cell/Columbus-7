@@ -88,7 +88,6 @@ def interactive_menu(columbus_omega: ColumbusOmega):
         print("7. Show Guardian Wallet balance")
         print("0. Exit simulation")
         
-        # Non-blocking input handling if possible, but standard input is fine for CLI simulation
         try:
             choice = input("Choose an option: ").strip()
         except EOFError:
@@ -97,7 +96,8 @@ def interactive_menu(columbus_omega: ColumbusOmega):
         if choice == "1":
             tx_id = input("Transaction ID: ")
             try:
-                amount = float(input("Amount (BTC): "))
+                amount_str = input("Amount (BTC): ")
+                amount = float(amount_str)
                 source = input("Source Wallet: ")
                 columbus_omega.process_transaction(tx_id, amount, source)
             except ValueError:
