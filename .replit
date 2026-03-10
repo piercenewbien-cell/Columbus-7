@@ -3,7 +3,6 @@ modules = ["python-3.11"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["python312Packages.cleanlab"]
 
 [unitTest]
 language = "python3"
@@ -17,46 +16,3 @@ deploymentTarget = "cloudrun"
 
 [agent]
 expertMode = true
-
-[workflows]
-runButton = "Project"
-
-[[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Columbus-Ω Simulation"
-
-[[workflows.workflow]]
-name = "Columbus-Ω Simulation"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python main.py"
-
-[workflows.workflow.metadata]
-outputType = "console"
-
-[[workflows.workflow]]
-name = "Update"
-mode = "parallel"
-author = 49479721
-
-[[workflows.workflow.tasks]]
-task = "packager.installForAll"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = 'package com.columbusomega;  import android.content.Intent; import android.os.Bundle; import android.widget.Button; import android.widget.CheckBox; import android.widget.Toast; import androidx.appcompat.app.AppCompatActivity; import com.google.zxing.integration.android.IntentIntegrator; import com.google.zxing.integration.android.IntentResult; import java.util.ArrayList; import java.util.List;  public class GuardianKeyApprovalActivity extends AppCompatActivity {      CheckBox key1,key2,key3,key4,key5,key6,key7;     Button btnApprove, btnScanQR;     List<String> selectedKeys = new ArrayList<>();      @Override     protected void onCreate(Bundle savedInstanceState) {         super.onCreate(savedInstanceState);         setContentView(R.layout.guardian_approval);          key1 = findViewById(R.id.key1);         key2 = findViewById(R.id.key2);         key3 = findViewById(R.id.key3);         key4 = findViewById(R.id.key4);         key5 = findViewById(R.id.key5);         key6 = findViewById(R.id.key6);         key7 = findViewById(R.id.key7);          btnApprove = findViewById(R.id.btnApproveTransaction);         btnScanQR = findViewById(R.id.btnScanQR);          btnApprove.setOnClickListener(v -> approveTransaction());         btnScanQR.setOnClickListener(v -> scanWalletQR());     }      private void approveTransaction() {         selectedKeys.clear();         if(key1.isChecked()) selectedKeys.add("Ω1COL7GUARDIANAX3F4");         if(key2.isChecked()) selectedKeys.add("Ω2COL7TREASURYB92KD");         if(key3.isChecked()) selectedKeys.add("Ω3COL7NODECORE91LK");         if(key4.isChecked()) selectedKeys.add("Ω4COL7VAULTSEALQ8P");         if(key5.isChecked()) selectedKeys.add("Ω5COL7FRAUDLOCKW2Z");         if(key6.isChecked()) selectedKeys.add("Ω6COL7ANTISPAMT9X");         if(key7.isChecked()) selectedKeys.add("Ω7COL7NEXUSCORE7AB");          if(selectedKeys.size() < 3) {             Toast.makeText(this, "Select at least 3 keys", Toast.LENGTH_SHORT).show();             return;         }          double purchaseAmountBTC = 0.01; // example         LedgerBlock block = new LedgerBlock(                 "TX-" + System.currentTimeMillis(),                 purchaseAmountBTC,                 selectedKeys,                 "QKS-" + System.nanoTime(),                 LedgerManager.getLatestHash()         );          LedgerManager.addTransaction(block);         Toast.makeText(this, "Transaction approved & recorded in ledger", Toast.LENGTH_SHORT).show();     }      private void scanWalletQR() {         IntentIntegrator integrator = new IntentIntegrator(this);         integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE);         integrator.setPrompt("Scan 2 wallet QR codes separated by ;");         integrator.setBeepEnabled(true);         integrator.initiateScan();     }      @Override     protected void onActivityResult(int requestCode,int resultCode, Intent data){         IntentResult result = IntentIntegrator.parseActivityResult(requestCode,resultCode,data);         if(result != null) {             if(result.getContents() == null) {                 Toast.makeText(this,"Cancelled QR Scan",Toast.LENGTH_SHORT).show();             } else {                 String scannedQR = result.getContents();                 String[] wallets = scannedQR.split(";");                 if(wallets.length != 2){                     Toast.makeText(this,"QR must contain 2 wallet addresses separated by ;",Toast.LENGTH_LONG).show();                 } else {                     Toast.makeText(this,"Paying wallets:\n"+wallets[0]+"\n"+wallets[1],Toast.LENGTH_LONG).show();                     LedgerManager.logWalletConnectURI(scannedQR);                 }             }         } else super.onActivityResult(requestCode,resultCode,data);     } }'
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Project"
-
-[[ports]]
-localPort = 66699933
-externalPort = 6000
