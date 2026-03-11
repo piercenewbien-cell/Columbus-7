@@ -1,4 +1,4 @@
-# Columbus-Ω Treasury System
+replit (copy).md# Columbus-Ω Treasury System
 
 ## Project Overview
 An interactive Python CLI simulation implementing a sophisticated cybersecurity/governance treasury system with multi-signature authentication and a 4-layer vault architecture.
