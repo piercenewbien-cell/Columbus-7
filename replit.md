@@ -65,11 +65,33 @@ Each with unique identifier and 3,000,000 BTC balance:
 - **Transaction Tab**: Multi-key selection, transaction processing
 - **Receipts Tab**: Historical transaction records
 
+## New Features: Sentinel-P & Population Ledger
+
+### Sentinel-P Protocol
+- **Transaction Analysis**: Risk scoring based on amount and activity
+- **Event Chain**: SHA-256 blockchain for audit trail
+- **Integrity Checking**: Validates chain authenticity
+- **Activity Tracking**: Monitors wallet behavior patterns
+
+API Endpoints:
+- `POST /api/sentinel/analyze` - Analyze transaction risk
+- `GET /api/sentinel/chain` - Retrieve event chain
+- `GET /api/sentinel/integrity` - Verify chain integrity
+
+### Population Ledger
+- **Entity Registration**: Track named wallets
+- **Risk Scoring**: Automatic risk assessment
+- **Transaction Logging**: Records all entity activity
+- **High-Risk Reporting**: Top entities by risk score
+
+API Endpoints:
+- `POST /api/ledger/register` - Register entity/wallet
+- `GET /api/ledger/risk` - Get high-risk entities
+
 ## Running the System
 
 ### Workflows (Auto-Started)
-1. **Treasury API** - Flask server on port 5000
-2. **Kivy Dashboard** - Desktop/Mobile UI application
+1. **Treasury API** - Flask server on port 5000 with all features
 
 ### Manual CLI
 ```bash
