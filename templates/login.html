@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Columbus-Ω | Access Terminal</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="scanline"></div>
+
+<div class="login-page">
+  <div>
+    <div class="login-box">
+      <div class="login-logo">
+        <span class="big-symbol">COL-Ω</span>
+        <span class="sub">TREASURY SYSTEM V2</span>
+      </div>
+      <p class="login-title">🔐 SECURE ACCESS TERMINAL</p>
+
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          {% for msg in messages %}
+            <div class="alert alert-danger">⚠ {{ msg }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST">
+        <div class="form-group">
+          <label class="form-label">Operator ID</label>
+          <input type="text" name="username" class="form-control" placeholder="Enter operator ID" required autofocus autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Access Key</label>
+          <input type="password" name="password" class="form-control" placeholder="••••••••••••" required>
+        </div>
+        <button type="submit" class="btn btn-green" style="width:100%;justify-content:center;margin-top:8px;">
+          ▶ AUTHENTICATE
+        </button>
+      </form>
+
+      <div style="margin-top:24px;padding-top:16px;border-top:1px solid var(--border);">
+        <p style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);text-align:center;letter-spacing:2px;">
+          DEFAULT: admin / columbus2026
+        </p>
+      </div>
+    </div>
+
+    <p style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);text-align:center;margin-top:16px;letter-spacing:2px;">
+      COLUMBUS-Ω GUARDIAN TREASURY SYSTEM · ALL ACCESS LOGGED
+    </p>
+  </div>
+</div>
+
+<script>
+  let chars = '01';
+  const canvas = document.createElement('canvas');
+  canvas.style.cssText = 'position:fixed;top:0;left:0;opacity:0.04;pointer-events:none;z-index:-1;';
+  document.body.appendChild(canvas);
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const cols = Math.floor(canvas.width / 14);
+  const drops = Array(cols).fill(1);
+  function drawMatrix() {
+    ctx.fillStyle = 'rgba(0,0,0,0.05)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#00ff88';
+    ctx.font = '12px monospace';
+    drops.forEach((y, i) => {
+      const char = chars[Math.floor(Math.random() * chars.length)];
+      ctx.fillText(char, i * 14, y * 14);
+      if (y * 14 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+      drops[i]++;
+    });
+  }
+  setInterval(drawMatrix, 60);
+</script>
+</body>
+</html>

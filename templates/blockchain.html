@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% block title %}| Block Explorer{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">BLOCK EXPLORER</div>
+    <div class="page-subtitle">COLUMBUS-Ω HASH CHAIN · SHA-256 PROOF-OF-WORK</div>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-orange btn-sm mine-btn" onclick="triggerMine()">⬛ MINE BLOCK</button>
+  </div>
+</div>
+
+<div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:20px;">
+  <div class="stat-card purple">
+    <div class="stat-label">Total Blocks</div>
+    <div class="stat-value">{{ blocks.total }}</div>
+    <div class="stat-sub">IN CHAIN</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Chain Height</div>
+    <div class="stat-value">#{{ blocks.items[0].block_number if blocks.items else 0 }}</div>
+    <div class="stat-sub">LATEST BLOCK</div>
+  </div>
+  <div class="stat-card cyan">
+    <div class="stat-label">Mining Difficulty</div>
+    <div class="stat-value">4</div>
+    <div class="stat-sub">LEADING ZEROS</div>
+  </div>
+  <div class="stat-card orange">
+    <div class="stat-label">Block Reward</div>
+    <div class="stat-value">6.25</div>
+    <div class="stat-sub">COL PER BLOCK</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">⬛ BLOCK CHAIN</div>
+
+  {% for block in blocks.items %}
+  <div class="block-item">
+    <div class="block-number">#{{ block.block_number }}</div>
+    <div>
+      <div class="block-hash">{{ block.block_hash }}</div>
+      <div class="block-meta">
+        PREV: {{ block.prev_hash[:32] }}...
+      </div>
+      <div class="block-meta" style="margin-top:4px;">
+        MERKLE: {{ block.merkle_root[:32] }}... &nbsp;|&nbsp;
+        NONCE: {{ "{:,}".format(block.nonce) }} &nbsp;|&nbsp;
+        DIFFICULTY: {{ block.difficulty }} &nbsp;|&nbsp;
+        TXs: {{ block.tx_count }} &nbsp;|&nbsp;
+        MINER: {{ block.miner }} &nbsp;|&nbsp;
+        {{ block.timestamp.strftime('%Y-%m-%d %H:%M') }}
+      </div>
+    </div>
+    <div class="block-stats">
+      <div class="block-reward">{{ block.reward }} COL</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);margin-top:4px;">REWARD</div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- Pagination -->
+  <div class="pagination">
+    {% if blocks.has_prev %}
+      <a href="{{ url_for('blockchain', page=blocks.prev_num) }}" class="page-btn">◀ NEWER</a>
+    {% endif %}
+    {% for p in blocks.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+      {% if p %}
+        <a href="{{ url_for('blockchain', page=p) }}" class="page-btn {% if p == blocks.page %}active{% endif %}">{{ p }}</a>
+      {% else %}
+        <span class="page-btn">…</span>
+      {% endif %}
+    {% endfor %}
+    {% if blocks.has_next %}
+      <a href="{{ url_for('blockchain', page=blocks.next_num) }}" class="page-btn">OLDER ▶</a>
+    {% endif %}
+  </div>
+</div>
+
+<div id="mineModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:1000;align-items:center;justify-content:center;">
+  <div class="card" style="width:500px;max-width:90vw;">
+    <div class="card-title">⬛ MINING NEW BLOCK</div>
+    <div class="mining-display" id="mineLog">Initializing proof-of-work engine...</div>
+    <div style="margin-top:12px;">
+      <button class="btn btn-green btn-sm" onclick="closeMineModal()">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function triggerMine() {
+  const modal = document.getElementById('mineModal');
+  const log = document.getElementById('mineLog');
+  modal.style.display = 'flex';
+  log.innerHTML = '';
+  const lines = [
+    '> Collecting pending transactions...',
+    '> Computing merkle root...',
+    '> Proof-of-work starting (difficulty: 4)...',
+    '> Searching for valid hash...',
+  ];
+  let i = 0;
+  const iv = setInterval(() => { if (i < lines.length) { log.innerHTML += lines[i++] + '\n'; } }, 350);
+  fetch('/mine', {method:'POST'}).then(r => r.json()).then(d => {
+    clearInterval(iv);
+    if (d.success) {
+      log.innerHTML += `> ✓ BLOCK #${d.block_number} MINED!\n> Hash: ${d.block_hash}\n> Nonce: ${d.nonce.toLocaleString()}\n`;
+    }
+  });
+}
+function closeMineModal() {
+  document.getElementById('mineModal').style.display = 'none';
+  location.reload();
+}
+</script>
+{% endblock %}

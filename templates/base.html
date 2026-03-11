@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Columbus-Ω {% block title %}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="scanline"></div>
+
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <span class="logo-symbol">COL-Ω</span>
+    <span class="logo-sub">TREASURY SYSTEM V2</span>
+  </div>
+  <div class="sidebar-status">
+    <div class="status-dot"></div>
+    <span class="status-text">NODE ONLINE</span>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">System</div>
+    <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+      <span class="nav-icon">◈</span><span>Dashboard</span>
+    </a>
+    <a href="{{ url_for('guardian_nodes') }}" class="nav-item {% if request.endpoint == 'guardian_nodes' %}active{% endif %}">
+      <span class="nav-icon">⬡</span><span>Guardian Nodes</span>
+    </a>
+    <a href="{{ url_for('vaults') }}" class="nav-item {% if request.endpoint == 'vaults' %}active{% endif %}">
+      <span class="nav-icon">▣</span><span>Vault Layers</span>
+    </a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-label">Blockchain</div>
+    <a href="{{ url_for('transactions') }}" class="nav-item {% if request.endpoint in ['transactions','transaction_detail'] %}active{% endif %}">
+      <span class="nav-icon">⟳</span><span>Transactions</span>
+    </a>
+    <a href="{{ url_for('blockchain') }}" class="nav-item {% if request.endpoint == 'blockchain' %}active{% endif %}">
+      <span class="nav-icon">⬛</span><span>Block Explorer</span>
+    </a>
+    <a href="{{ url_for('new_transaction') }}" class="nav-item {% if request.endpoint == 'new_transaction' %}active{% endif %}">
+      <span class="nav-icon">✦</span><span>New Transaction</span>
+    </a>
+  </div>
+
+  <div class="sidebar-user">
+    <div class="user-avatar">{{ current_user.username[0].upper() }}</div>
+    <div class="user-info">
+      <span class="user-name">{{ current_user.username }}</span>
+      <span class="user-role">{{ current_user.role.upper() }}</span>
+    </div>
+    <a href="{{ url_for('logout') }}" class="logout-btn" title="Logout">⏻</a>
+  </div>
+</div>
+
+<div class="main-content">
+  <div class="ticker-bar" id="tickerBar">
+    <div class="ticker-item"><span class="ticker-label">BLOCK</span><span class="ticker-value" id="tBlock">—</span></div>
+    <div class="ticker-item"><span class="ticker-label">TX COUNT</span><span class="ticker-value" id="tTx">—</span></div>
+    <div class="ticker-item"><span class="ticker-label">TOTAL BALANCE</span><span class="ticker-value" id="tBal">—</span></div>
+    <div class="ticker-item"><span class="ticker-label">FRAUD FLAGS</span><span class="ticker-value glow-red" id="tFraud">—</span></div>
+    <div class="ticker-item"><span class="ticker-label">HASH</span><span class="ticker-value glow-cyan" id="tHash">—</span></div>
+    <div class="ticker-item"><span class="ticker-label">NODE</span><span class="ticker-value">⬡ ONLINE</span></div>
+    <div class="ticker-item"><span class="ticker-label">SYSTEM TIME</span><span class="ticker-value" id="tTime">—</span></div>
+  </div>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      {% for msg in messages %}
+        <div class="alert alert-success" style="margin-bottom:16px;">⚡ {{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</div>
+
+<script>
+function updateTicker() {
+  fetch('/api/stats').then(r => r.json()).then(d => {
+    document.getElementById('tBlock').textContent = '#' + d.latest_block;
+    document.getElementById('tTx').textContent = d.total_tx.toLocaleString();
+    document.getElementById('tBal').textContent = Number(d.total_vault_balance).toLocaleString(undefined, {maximumFractionDigits:0}) + ' COL';
+    document.getElementById('tFraud').textContent = d.fraud_count;
+    document.getElementById('tHash').textContent = d.latest_hash;
+  }).catch(() => {});
+}
+
+function updateTime() {
+  const now = new Date();
+  document.getElementById('tTime').textContent =
+    now.toLocaleTimeString('en-US', {hour12: false}) + ' UTC';
+}
+
+updateTicker();
+updateTime();
+setInterval(updateTicker, 8000);
+setInterval(updateTime, 1000);
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

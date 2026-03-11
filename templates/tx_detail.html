@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% block title %}| TX Detail{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">TRANSACTION DETAIL</div>
+    <div class="page-subtitle">{{ tx.txid }}</div>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('receipt', txid=tx.txid) }}" class="btn btn-green btn-sm">🖨 PRINT RECEIPT</a>
+    <a href="{{ url_for('transactions') }}" class="btn btn-cyan btn-sm">← BACK</a>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">⟳ TRANSACTION INFO</div>
+    <div style="font-family:var(--font-mono);font-size:12px;">
+      <div style="margin-bottom:12px;">
+        <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:3px;">TXID</div>
+        <div style="color:var(--cyan);word-break:break-all;font-size:11px;">{{ tx.txid }}</div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:3px;">TYPE</div>
+        <div>
+          {% if tx.tx_type == 'TRANSFER' %}<span class="badge badge-cyan">{{ tx.tx_type }}</span>
+          {% elif tx.tx_type == 'EMERGENCY' %}<span class="badge badge-red">{{ tx.tx_type }}</span>
+          {% else %}<span class="badge badge-purple">{{ tx.tx_type }}</span>{% endif %}
+        </div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:3px;">AMOUNT</div>
+        <div style="font-family:var(--font-head);font-size:24px;color:var(--green);font-weight:900;">
+          {{ "{:,.4f}".format(tx.amount) }} <span style="font-size:12px;color:var(--text-dim);">COL</span>
+        </div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:3px;">FEE</div>
+        <div style="color:var(--orange);">{{ "{:,.6f}".format(tx.fee) }} COL</div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:3px;">FROM</div>
+        <div style="color:var(--text);word-break:break-all;font-size:11px;">{{ tx.sender }}</div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:3px;">TO</div>
+        <div style="color:var(--text);word-break:break-all;font-size:11px;">{{ tx.receiver }}</div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:3px;">TIMESTAMP</div>
+        <div style="color:var(--text);">{{ tx.timestamp.strftime('%Y-%m-%d %H:%M:%S UTC') }}</div>
+      </div>
+      <div>
+        <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:3px;">QUANTUM SIGNATURE</div>
+        <div style="color:var(--purple);">{{ tx.quantum_sig }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <!-- Block Info -->
+    {% if block %}
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">⬛ BLOCK CONFIRMATION</div>
+      <div style="font-family:var(--font-mono);font-size:12px;">
+        <div style="margin-bottom:8px;">
+          <span style="color:var(--text-dim);font-size:9px;letter-spacing:2px;">BLOCK NUMBER  </span>
+          <span style="color:var(--purple);font-family:var(--font-head);font-size:18px;font-weight:900;">#{{ block.block_number }}</span>
+        </div>
+        <div style="margin-bottom:8px;">
+          <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:2px;">BLOCK HASH</div>
+          <div style="color:var(--cyan);word-break:break-all;font-size:10px;">{{ block.block_hash }}</div>
+        </div>
+        <div style="margin-bottom:8px;">
+          <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:2px;">PREV HASH</div>
+          <div style="color:var(--text-dim);word-break:break-all;font-size:10px;">{{ block.prev_hash }}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;">
+          <div>
+            <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;">NONCE</div>
+            <div style="color:var(--yellow);">{{ "{:,}".format(block.nonce) }}</div>
+          </div>
+          <div>
+            <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;">DIFFICULTY</div>
+            <div style="color:var(--orange);">{{ block.difficulty }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- AI Analysis -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">🤖 AI GUARDIAN ANALYSIS</div>
+      {% set risk = tx.ai_risk_score %}
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+          <div style="font-family:var(--font-head);font-size:32px;font-weight:900;
+            {% if risk < 25 %}color:var(--green);{% elif risk < 50 %}color:var(--yellow);{% elif risk < 75 %}color:var(--orange);{% else %}color:var(--red);{% endif %}">
+            {{ "%.1f"|format(risk) }}%
+          </div>
+          <div>
+            <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;">RISK SCORE</div>
+            {% if tx.fraud_flag %}
+              <span class="badge badge-red">⚠ FRAUD DETECTED</span>
+            {% else %}
+              <span class="badge badge-green">✓ CLEAR</span>
+            {% endif %}
+          </div>
+        </div>
+        <div class="progress-bar" style="height:8px;margin-bottom:8px;">
+          <div class="progress-fill" style="width:{{ risk }}%;
+            {% if risk < 25 %}background:var(--green);{% elif risk < 50 %}background:var(--yellow);{% elif risk < 75 %}background:var(--orange);{% else %}background:var(--red);{% endif %}"></div>
+        </div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text);background:rgba(0,0,0,0.3);padding:10px;border-radius:3px;border-left:3px solid {% if tx.fraud_flag %}var(--red){% else %}var(--green){% endif %};">
+          {{ tx.ai_analysis }}
+        </div>
+      </div>
+    </div>
+
+    <!-- Guardian Keys -->
+    <div class="card">
+      <div class="card-title">⬡ GUARDIAN KEY APPROVALS ({{ keys_used|length }}-OF-7)</div>
+      {% for key_name in keys_used %}
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(13,42,61,0.5);">
+        <span style="color:var(--green);font-size:12px;">✓</span>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text);">{{ key_name }}</span>
+        <span class="badge badge-green" style="margin-left:auto;">SIGNED</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,7 +1,14 @@
 [project]
-name = "python-template"
-version = "0.1.0"
-description = ""
-authors = ["Your Name <you@example.com>"]
+name = "columbus-omega"
+version = "2.0.0"
+description = "Columbus-Ω Guardian Treasury System V2"
+authors = ["Columbus-Omega"]
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+  "flask",
+  "flask-login",
+  "flask-sqlalchemy",
+  "qrcode",
+  "pillow",
+  "openai",
+]

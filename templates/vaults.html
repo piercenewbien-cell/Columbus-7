@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}| Vault Layers{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">VAULT LAYER ARCHITECTURE</div>
+    <div class="page-subtitle">4-LAYER SECURITY · QUANTUM-PROTECTED STORAGE</div>
+  </div>
+</div>
+
+{% set total = vaults|sum(attribute='balance') %}
+
+<div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
+  <div class="stat-card">
+    <div class="stat-label">Total Reserve</div>
+    <div class="stat-value">{{ "{:,.0f}".format(total) }}</div>
+    <div class="stat-sub">COL TOTAL</div>
+  </div>
+  {% for vault in vaults %}
+  <div class="stat-card {% if loop.index == 1 %}cyan{% elif loop.index == 2 %}{% elif loop.index == 3 %}purple{% else %}orange{% endif %}">
+    <div class="stat-label">Layer {{ vault.access_level }}</div>
+    <div class="stat-value">{{ "{:,.0f}".format(vault.balance) }}</div>
+    <div class="stat-sub">{{ vault.name[:20] }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+{% for vault in vaults %}
+<div class="vault-card">
+  <div class="vault-level">{{ vault.access_level }}</div>
+  <div class="vault-header">
+    <div class="vault-badge">L{{ vault.access_level }}</div>
+    <div>
+      <div class="vault-name">{{ vault.name }}</div>
+      <div class="vault-desc">{{ vault.description }}</div>
+    </div>
+    <span class="badge badge-green" style="margin-left:auto;">SECURED</span>
+  </div>
+
+  <div class="vault-addr">{{ vault.wallet_address }}</div>
+
+  <div style="display:flex;align-items:center;gap:16px;margin-top:8px;">
+    <div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;">BALANCE</div>
+      <div class="vault-balance">{{ "{:,.2f}".format(vault.balance) }} <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">COL</span></div>
+    </div>
+    <div style="flex:1;">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:4px;">
+        {{ "%.1f"|format(vault.balance / total * 100 if total > 0 else 0) }}% OF TOTAL
+      </div>
+      <div class="progress-bar" style="height:6px;">
+        <div class="progress-fill" style="width:{{ vault.balance / total * 100 if total > 0 else 0 }}%"></div>
+      </div>
+    </div>
+    <div class="qr-container">
+      <img src="{{ url_for('qr_code', wallet_address=vault.wallet_address) }}" alt="QR Code" style="max-width:80px;">
+      <div style="font-family:var(--font-mono);font-size:8px;color:var(--text-dim);margin-top:4px;text-align:center;">WALLET QR</div>
+    </div>
+  </div>
+
+  <div style="margin-top:12px;display:flex;gap:8px;">
+    <a href="{{ url_for('new_transaction') }}" class="btn btn-green btn-sm">✦ SEND FROM VAULT</a>
+    <a href="{{ url_for('qr_code', wallet_address=vault.wallet_address) }}" target="_blank" class="btn btn-cyan btn-sm">⊞ FULL QR</a>
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}

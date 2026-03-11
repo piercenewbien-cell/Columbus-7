@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% block title %}| Guardian Nodes{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">GUARDIAN NODE PANEL</div>
+    <div class="page-subtitle">7 ACTIVE GUARDIAN KEYS · MULTI-SIGNATURE CONTROL</div>
+  </div>
+</div>
+
+<!-- Stats Bar -->
+<div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
+  <div class="stat-card">
+    <div class="stat-label">Active Keys</div>
+    <div class="stat-value">{{ keys|selectattr('status','equalto','ACTIVE')|list|length }}</div>
+    <div class="stat-sub">OF 7 TOTAL</div>
+  </div>
+  <div class="stat-card cyan">
+    <div class="stat-label">Total Key Balance</div>
+    <div class="stat-value">{{ "{:,.0f}".format(keys|sum(attribute='balance')) }}</div>
+    <div class="stat-sub">COL</div>
+  </div>
+  <div class="stat-card purple">
+    <div class="stat-label">Signatures This Session</div>
+    <div class="stat-value">{{ keys|sum(attribute='tx_signed') }}</div>
+    <div class="stat-sub">TX APPROVALS</div>
+  </div>
+  <div class="stat-card orange">
+    <div class="stat-label">Min Required Sigs</div>
+    <div class="stat-value">3-of-7</div>
+    <div class="stat-sub">MULTI-SIG POLICY</div>
+  </div>
+</div>
+
+<!-- Key Cards Grid -->
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-title">⬡ GUARDIAN KEY REGISTRY</div>
+  <div class="key-grid">
+    {% for key in keys %}
+    <div class="key-card active">
+      <div class="key-num">{{ loop.index }}</div>
+      <div class="key-name">{{ key.name }}</div>
+      <div class="key-id">{{ key.identifier }}</div>
+      <div class="key-balance">
+        {{ "{:,.0f}".format(key.balance) }}
+        <span>COL</span>
+      </div>
+      <div class="key-tx-count">{{ key.tx_signed }} transactions signed</div>
+      <div style="margin-top:8px;display:flex;gap:6px;align-items:center;">
+        <span class="badge badge-green">{{ key.status }}</span>
+        <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);">
+          {{ key.last_active.strftime('%H:%M:%S') }}
+        </span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Multi-sig Policy -->
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">🔐 MULTI-SIGNATURE POLICY</div>
+    <div style="font-family:var(--font-mono);font-size:12px;line-height:2;">
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">
+        <span style="color:var(--text-dim);">SIGNATURE SCHEME</span>
+        <span style="color:var(--green);">3-OF-7 THRESHOLD</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">
+        <span style="color:var(--text-dim);">TOTAL KEYS</span>
+        <span style="color:var(--cyan);">7 GUARDIAN KEYS</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">
+        <span style="color:var(--text-dim);">MIN APPROVALS</span>
+        <span style="color:var(--yellow);">3 KEYS REQUIRED</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">
+        <span style="color:var(--text-dim);">SIGNATURE TYPE</span>
+        <span style="color:var(--purple);">QUANTUM-RESISTANT</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;">
+        <span style="color:var(--text-dim);">KEY ALGORITHM</span>
+        <span style="color:var(--orange);">COLUMBUS-QKS-256</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live Activity -->
+  <div class="card">
+    <div class="card-title">⬡ LIVE NODE ACTIVITY</div>
+    <div class="activity-feed" id="activityFeed" style="max-height:280px;">
+      {% for item in activity %}
+      <div class="activity-item {{ item.event_type }}">
+        <span class="activity-time">{{ item.timestamp.strftime('%H:%M:%S') }}</span>
+        <span class="activity-node">{{ item.node_id }}</span>
+        <span class="activity-text">{{ item.event }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function refreshFeed() {
+  fetch('/api/node-feed').then(r => r.json()).then(data => {
+    const feed = document.getElementById('activityFeed');
+    feed.innerHTML = data.map(item => `
+      <div class="activity-item ${item.event_type}">
+        <span class="activity-time">${item.timestamp}</span>
+        <span class="activity-node">${item.node_id}</span>
+        <span class="activity-text">${item.event}</span>
+      </div>
+    `).join('');
+  });
+}
+setInterval(refreshFeed, 8000);
+</script>
+{% endblock %}

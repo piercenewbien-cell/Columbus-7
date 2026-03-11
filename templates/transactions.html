@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block title %}| Transactions{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">TRANSACTION LEDGER</div>
+    <div class="page-subtitle">BLOCKCHAIN TRANSACTION HISTORY · AI-ANALYZED</div>
+  </div>
+  <div class="page-actions">
+    <a href="{{ url_for('transactions', filter='all') }}" class="btn btn-sm {% if tx_filter == 'all' %}btn-green{% else %}btn-cyan{% endif %}">ALL</a>
+    <a href="{{ url_for('transactions', filter='confirmed') }}" class="btn btn-sm {% if tx_filter == 'confirmed' %}btn-green{% else %}btn-cyan{% endif %}">CONFIRMED</a>
+    <a href="{{ url_for('transactions', filter='fraud') }}" class="btn btn-sm {% if tx_filter == 'fraud' %}btn-red{% else %}btn-cyan{% endif %}">FRAUD FLAGS</a>
+    <a href="{{ url_for('new_transaction') }}" class="btn btn-green btn-sm">✦ NEW TX</a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>TXID</th>
+          <th>TYPE</th>
+          <th>SENDER</th>
+          <th>RECEIVER</th>
+          <th>AMOUNT (COL)</th>
+          <th>BLOCK</th>
+          <th>AI RISK</th>
+          <th>STATUS</th>
+          <th>TIME</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in txs.items %}
+        <tr>
+          <td>
+            <a href="{{ url_for('transaction_detail', txid=tx.txid) }}" class="txid-cell" title="{{ tx.txid }}">
+              {{ tx.txid[:16] }}...
+            </a>
+          </td>
+          <td>
+            {% if tx.tx_type == 'TRANSFER' %}
+              <span class="badge badge-cyan">{{ tx.tx_type }}</span>
+            {% elif tx.tx_type == 'EMERGENCY' %}
+              <span class="badge badge-red">{{ tx.tx_type }}</span>
+            {% elif tx.tx_type == 'RESERVE' %}
+              <span class="badge badge-purple">{{ tx.tx_type }}</span>
+            {% else %}
+              <span class="badge badge-orange">{{ tx.tx_type }}</span>
+            {% endif %}
+          </td>
+          <td style="font-size:10px;color:var(--text-dim);">{{ tx.sender[:14] }}...</td>
+          <td style="font-size:10px;color:var(--text-dim);">{{ tx.receiver[:14] }}...</td>
+          <td class="glow-green" style="font-family:var(--font-mono);">{{ "{:,.2f}".format(tx.amount) }}</td>
+          <td style="color:var(--purple);font-family:var(--font-mono);">
+            {% if tx.block_number %}#{{ tx.block_number }}{% else %}<span style="color:var(--text-dim);">PENDING</span>{% endif %}
+          </td>
+          <td>
+            {% set risk = tx.ai_risk_score %}
+            {% if risk < 25 %}
+              <span style="color:var(--green);font-family:var(--font-mono);font-size:11px;">{{ "%.1f"|format(risk) }}%</span>
+            {% elif risk < 50 %}
+              <span style="color:var(--yellow);font-family:var(--font-mono);font-size:11px;">{{ "%.1f"|format(risk) }}%</span>
+            {% elif risk < 75 %}
+              <span style="color:var(--orange);font-family:var(--font-mono);font-size:11px;">{{ "%.1f"|format(risk) }}%</span>
+            {% else %}
+              <span style="color:var(--red);font-family:var(--font-mono);font-size:11px;">{{ "%.1f"|format(risk) }}%</span>
+            {% endif %}
+            {% if tx.fraud_flag %}<span class="badge badge-red" style="margin-left:4px;">⚠</span>{% endif %}
+          </td>
+          <td><span class="badge badge-green">{{ tx.status }}</span></td>
+          <td style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
+            {{ tx.timestamp.strftime('%m/%d %H:%M') }}
+          </td>
+          <td>
+            <a href="{{ url_for('receipt', txid=tx.txid) }}" class="btn btn-green btn-sm">RECEIPT</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination">
+    {% if txs.has_prev %}
+      <a href="{{ url_for('transactions', page=txs.prev_num, filter=tx_filter) }}" class="page-btn">◀ PREV</a>
+    {% endif %}
+    {% for p in txs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+      {% if p %}
+        <a href="{{ url_for('transactions', page=p, filter=tx_filter) }}" class="page-btn {% if p == txs.page %}active{% endif %}">{{ p }}</a>
+      {% else %}
+        <span class="page-btn" style="color:var(--text-dim);">…</span>
+      {% endif %}
+    {% endfor %}
+    {% if txs.has_next %}
+      <a href="{{ url_for('transactions', page=txs.next_num, filter=tx_filter) }}" class="page-btn">NEXT ▶</a>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

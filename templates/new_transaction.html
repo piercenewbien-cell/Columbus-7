@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}| New Transaction{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">NEW TRANSACTION</div>
+    <div class="page-subtitle">MULTI-SIGNATURE AUTHORIZATION · 3-OF-7 REQUIRED</div>
+  </div>
+  <a href="{{ url_for('transactions') }}" class="btn btn-cyan btn-sm">← BACK</a>
+</div>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}{% for msg in messages %}
+    <div class="alert alert-danger">⚠ {{ msg }}</div>
+  {% endfor %}{% endif %}
+{% endwith %}
+
+<div class="grid-5-7">
+  <div class="card">
+    <div class="card-title">⟳ TRANSACTION PARAMETERS</div>
+    <form method="POST" id="txForm">
+      <div class="form-group">
+        <label class="form-label">From Vault</label>
+        <select name="sender" class="form-control" required>
+          <option value="">Select source vault...</option>
+          {% for vault in vaults %}
+          <option value="{{ vault.wallet_address }}">
+            L{{ vault.access_level }} {{ vault.name }} — {{ "{:,.0f}".format(vault.balance) }} COL
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">To Vault</label>
+        <select name="receiver" class="form-control" required>
+          <option value="">Select destination vault...</option>
+          {% for vault in vaults %}
+          <option value="{{ vault.wallet_address }}">
+            L{{ vault.access_level }} {{ vault.name }} — {{ "{:,.0f}".format(vault.balance) }} COL
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Amount (COL)</label>
+        <input type="number" name="amount" class="form-control" step="0.01" min="0.01"
+               placeholder="0.00" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Transaction Type</label>
+        <select name="tx_type" class="form-control">
+          <option value="TRANSFER">TRANSFER</option>
+          <option value="RESERVE">RESERVE</option>
+          <option value="OPERATIONAL">OPERATIONAL</option>
+          <option value="EMERGENCY">EMERGENCY</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Guardian Key Approvals (Min 3-of-7)</label>
+        <div class="checkbox-group">
+          {% for key in keys %}
+          <label class="checkbox-item">
+            <input type="checkbox" name="guardian_keys" value="{{ key.name }}">
+            <span>{{ key.name }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-green" style="width:100%;justify-content:center;margin-top:8px;">
+        ▶ SUBMIT TRANSACTION
+      </button>
+    </form>
+  </div>
+
+  <div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">ℹ TRANSACTION POLICY</div>
+      <div style="font-family:var(--font-mono);font-size:11px;line-height:1.8;color:var(--text-dim);">
+        <div style="color:var(--green);margin-bottom:8px;">■ MULTI-SIGNATURE REQUIREMENTS</div>
+        <div>• Minimum 3 Guardian Keys must sign</div>
+        <div>• 3-of-7 threshold policy enforced</div>
+        <div>• Each key approval is cryptographically logged</div>
+        <br>
+        <div style="color:var(--cyan);margin-bottom:8px;">■ AI RISK ANALYSIS</div>
+        <div>• Every transaction is AI-analyzed</div>
+        <div>• Risk scores computed in real-time</div>
+        <div>• Fraud detection auto-flags high-risk TX</div>
+        <br>
+        <div style="color:var(--orange);margin-bottom:8px;">■ MINING & CONFIRMATION</div>
+        <div>• TX automatically triggers block mining</div>
+        <div>• Proof-of-work confirms each transaction</div>
+        <div>• SHA-256 hash chain maintained</div>
+        <br>
+        <div style="color:var(--purple);margin-bottom:8px;">■ FEES</div>
+        <div>• Network fee: 0.1% of transaction amount</div>
+        <div>• Block reward: 6.25 COL per mined block</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">▣ VAULT BALANCES</div>
+      {% for vault in vaults %}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);">
+        <div>
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--text);">L{{ vault.access_level }} {{ vault.name }}</div>
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);">{{ vault.wallet_address[:16] }}...</div>
+        </div>
+        <div style="font-family:var(--font-head);font-size:14px;color:var(--green);font-weight:700;">
+          {{ "{:,.0f}".format(vault.balance) }}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

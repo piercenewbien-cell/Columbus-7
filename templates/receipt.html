@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% block title %}| Receipt{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">TRANSACTION RECEIPT</div>
+    <div class="page-subtitle">OFFICIAL COLUMBUS-Ω RECEIPT · QUANTUM CERTIFIED</div>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-green btn-sm" onclick="window.print()">🖨 PRINT</button>
+    <a href="{{ url_for('transaction_detail', txid=tx.txid) }}" class="btn btn-cyan btn-sm">← BACK</a>
+  </div>
+</div>
+
+<div class="receipt-paper">
+  <div class="receipt-logo">COL-Ω TREASURY</div>
+  <div style="text-align:center;font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;">
+    OFFICIAL TRANSACTION RECEIPT
+  </div>
+
+  <hr class="receipt-divider">
+
+  <div class="receipt-row">
+    <span class="receipt-label">TRANSACTION ID</span>
+    <span class="receipt-value cyan">{{ tx.txid }}</span>
+  </div>
+  <div class="receipt-row">
+    <span class="receipt-label">QUANTUM SIGNATURE</span>
+    <span class="receipt-value" style="color:var(--purple);">{{ tx.quantum_sig }}</span>
+  </div>
+  <div class="receipt-row">
+    <span class="receipt-label">TIMESTAMP</span>
+    <span class="receipt-value">{{ tx.timestamp.strftime('%Y-%m-%d %H:%M:%S UTC') }}</span>
+  </div>
+
+  <hr class="receipt-divider">
+
+  <div class="receipt-row">
+    <span class="receipt-label">FROM WALLET</span>
+    <span class="receipt-value cyan">{{ tx.sender }}</span>
+  </div>
+  <div class="receipt-row">
+    <span class="receipt-label">TO WALLET</span>
+    <span class="receipt-value cyan">{{ tx.receiver }}</span>
+  </div>
+
+  <hr class="receipt-divider">
+
+  <div class="receipt-row">
+    <span class="receipt-label">AMOUNT</span>
+    <span class="receipt-value green" style="font-family:var(--font-head);font-size:18px;font-weight:900;">
+      {{ "{:,.4f}".format(tx.amount) }} COL
+    </span>
+  </div>
+  <div class="receipt-row">
+    <span class="receipt-label">NETWORK FEE</span>
+    <span class="receipt-value" style="color:var(--orange);">{{ "{:,.6f}".format(tx.fee) }} COL</span>
+  </div>
+  <div class="receipt-row">
+    <span class="receipt-label">TRANSACTION TYPE</span>
+    <span class="receipt-value">{{ tx.tx_type }}</span>
+  </div>
+  <div class="receipt-row">
+    <span class="receipt-label">STATUS</span>
+    <span class="receipt-value green">✓ {{ tx.status }}</span>
+  </div>
+
+  <hr class="receipt-divider">
+
+  {% if block %}
+  <div class="receipt-row">
+    <span class="receipt-label">BLOCK NUMBER</span>
+    <span class="receipt-value" style="color:var(--purple);">#{{ block.block_number }}</span>
+  </div>
+  <div class="receipt-row">
+    <span class="receipt-label">BLOCK HASH</span>
+    <span class="receipt-value cyan" style="font-size:10px;">{{ block.block_hash }}</span>
+  </div>
+  <div class="receipt-row">
+    <span class="receipt-label">NONCE</span>
+    <span class="receipt-value">{{ "{:,}".format(block.nonce) }}</span>
+  </div>
+  <hr class="receipt-divider">
+  {% endif %}
+
+  <div class="receipt-row">
+    <span class="receipt-label">GUARDIAN KEYS</span>
+    <span class="receipt-value">{{ keys_used|join(', ') }}</span>
+  </div>
+  <div class="receipt-row">
+    <span class="receipt-label">SIGNATURE POLICY</span>
+    <span class="receipt-value">{{ keys_used|length }}-OF-7 MULTI-SIG</span>
+  </div>
+
+  <hr class="receipt-divider">
+
+  <div class="receipt-row">
+    <span class="receipt-label">AI RISK SCORE</span>
+    <span class="receipt-value" style="{% if tx.ai_risk_score > 70 %}color:var(--red);{% elif tx.ai_risk_score > 40 %}color:var(--orange);{% else %}color:var(--green);{% endif %}">
+      {{ "%.2f"|format(tx.ai_risk_score) }}%
+    </span>
+  </div>
+  <div class="receipt-row">
+    <span class="receipt-label">FRAUD STATUS</span>
+    <span class="receipt-value {% if tx.fraud_flag %}" style="color:var(--red);">⚠ FLAGGED{% else %}green">✓ CLEAR{% endif %}</span>
+  </div>
+
+  <hr class="receipt-divider">
+
+  <div style="text-align:center;margin-top:20px;">
+    <img src="{{ url_for('qr_code', wallet_address=tx.txid[:38]) }}" alt="TX QR" style="width:120px;height:120px;">
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);margin-top:8px;letter-spacing:2px;">TRANSACTION QR CODE</div>
+  </div>
+
+  <div style="text-align:center;margin-top:20px;font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;">
+    COLUMBUS-Ω GUARDIAN TREASURY SYSTEM V2<br>
+    ALL TRANSACTIONS ARE FINAL AND IMMUTABLE
+  </div>
+</div>
+
+{% endblock %}

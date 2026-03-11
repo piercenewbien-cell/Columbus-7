@@ -1,84 +1,40 @@
-# Columbus-Ω Treasury System
+# Columbus-Ω Treasury System V2
 
-## Project Overview
-An interactive Python CLI simulation implementing a sophisticated cybersecurity/governance treasury system with multi-signature authentication and a 4-layer vault architecture.
+## Overview
+A full-stack cyberpunk-themed blockchain treasury management dashboard built with Flask. Features a dark cyberpunk UI, real blockchain ledger with SHA-256 hash chaining, AI-powered fraud detection, 3-of-7 multi-signature Guardian Key system, and a persistent SQLite database.
 
-## Core Architecture
+## Login Credentials
+- **Username:** admin
+- **Password:** columbus2026
 
-### Treasury Structure
-- **7 Guardian Keys** with unique identifiers and individual balances (3,000,000 BTC each)
-  - Guardian Key I (Ω1COL7GUARDIANAX3F4)
-  - Guardian Key II (Ω2COL7TREASURYB92KD)
-  - Guardian Key III (Ω3COL7NODECORE91LK)
-  - Guardian Key IV (Ω4COL7VAULTSEALQ8P)
-  - Guardian Key V (Ω5COL7FRAUDLOCKW2Z)
-  - Guardian Key VI (Ω6COL7ANTISPAMT9X)
-  - Guardian Key VII (Ω7COL7NEXUSCORE7AB)
+## Features
+- **Login System** — Secure authentication with Flask-Login, all access logged
+- **Dashboard** — Real-time stats, vault balances, Guardian Key status, live node activity feed
+- **Guardian Node Panel** — 7 Guardian Keys with 3-of-7 multi-sig policy enforcement
+- **4-Layer Vault Architecture** — Public Monitoring, Operational Reserve, Deep Reserve, Quantum Cold
+- **Blockchain Ledger** — SHA-256 hash chaining, real block explorer with block numbers, nonces, merkle roots
+- **Transaction Engine** — Multi-sig transaction processor with fee calculation
+- **AI Guardian** — Risk scoring and fraud detection on every transaction
+- **Mining Simulation** — Proof-of-work block mining (difficulty 4, leading zeros)
+- **Receipt Generator** — Printable crypto-style receipts with QR codes
+- **QR Wallet Generator** — Per-vault QR codes using the qrcode library
+- **Live Node Feed** — Real-time node activity ticker and activity feed
+- **Auto-generate TX** — One-click random transaction generation
 
-### 4-Layer Vault Architecture
-1. **Layer 1 - Public Monitoring Wallet** (1M BTC)
-   - Visible address for transparency
-   - Read-only observation point
+## Architecture
+- `main.py` — Flask backend, all routes, database models, blockchain logic
+- `templates/` — Jinja2 HTML templates (base, login, dashboard, transactions, tx_detail, guardian_nodes, blockchain, vaults, new_transaction, receipt)
+- `static/css/style.css` — Full cyberpunk dark theme CSS
+- `columbus_omega.db` — SQLite persistent database (auto-created)
 
-2. **Layer 2 - Operational Reserve** (8M BTC)
-   - Multi-signature authorization required
-   - Connected to Columbus-7 node network
+## Tech Stack
+- **Backend:** Flask, Flask-SQLAlchemy, Flask-Login
+- **Database:** SQLite (via SQLAlchemy ORM)
+- **Crypto:** hashlib (SHA-256), qrcode, pillow
+- **UI:** Pure CSS cyberpunk theme with Orbitron + Share Tech Mono fonts
+- **Port:** 5000
 
-3. **Layer 3 - Deep Reserve Vault** (12M BTC)
-   - Long-term security reserve
-   - Restricted access through multi-node approval
-
-4. **Layer 4 - Quantum Cold Vault** (2M BTC)
-   - Completely offline cryptographic storage
-   - Key fragments distributed across secure facilities
-   - Protected by quantum-resistant encryption
-
-### Multi-Key Transaction System
-- **Requirement**: 3-of-7 guardian key approval (multi-signature)
-- **Validation**: Combined balance check before execution
-- **Execution**: Proportional deduction from approving keys
-- **Receipt Generation**: Automatic with quantum signatures (QKS-XXXXXXXX format)
-
-### Transaction Receipt Format
-```
-TX-ID: Unique hexadecimal identifier
-Amount: Transaction amount in BTC
-Guardian Keys: List of approving keys
-Quantum Signature: QKS-XXXXXXXX
-Status: APPROVED
-Timestamp: Date and time of transaction
-```
-
-## Features Implemented
-- ✓ Interactive CLI menu system
-- ✓ Multi-key transaction processor (3-of-7)
-- ✓ Treasury status dashboard with vault breakdown
-- ✓ Transaction receipt generation with quantum signatures
-- ✓ Transaction logging and audit trail
-- ✓ Guardian key balance management
-- ✓ Proportional fund deduction across approving keys
-- ✓ Error handling for invalid transactions
-
-## Running the Simulation
-The system runs as a continuous CLI application via the "Columbus-Ω Simulation" workflow:
+## Running
 ```bash
 python main.py
 ```
-
-## Menu Options
-1. **Process Multi-Key Transaction** - Execute 3-of-7 approved treasury transactions
-2. **View Treasury Status** - Display vault architecture and guardian key balances
-3. **View Transaction Receipts** - List all processed transactions with details
-4. **View Transaction Log** - Display transaction history and audit trail
-0. **Exit System** - Gracefully shut down the simulation
-
-## Total System Assets
-- **Guardian Key Balance**: 21,000,000 BTC (7 keys × 3M each)
-- **Vault Balance**: 23,000,000 BTC (distributed across 4 layers)
-- **Total Treasury**: 44,000,000 BTC equivalent
-
-## Technical Stack
-- Language: Python 3
-- Architecture: Class-based with clear separation of concerns
-- No external dependencies required
-- Workflow: Configured as console-type background process
