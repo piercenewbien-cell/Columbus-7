@@ -1,9 +1,77 @@
 from flask import Flask, jsonify, request, render_template_string
 import random
 import json
+import hashlib
+import time
+import threading
 from datetime import datetime
 
 app = Flask(__name__)
+
+class SentinelP:
+    def __init__(self):
+        self.activity_scores = {}
+        self.event_chain = []
+        self.lock = threading.Lock()
+        self.threshold = 2.0
+
+    def analyze_transaction(self, tx):
+        wallet = tx["from"]
+        with self.lock:
+            self.activity_scores[wallet] = self.activity_scores.get(wallet, 0) + 1
+        risk = 0
+        if tx["amount"] > self.threshold:
+            risk += 2
+        if self.activity_scores[wallet] > 6:
+            risk += 1
+        return risk
+
+    def log_event(self, event):
+        with self.lock:
+            prev_hash = self.event_chain[-1]["hash"] if self.event_chain else "GENESIS"
+            record = {
+                "timestamp": time.time(),
+                "event": event,
+                "prev": prev_hash
+            }
+            record_hash = hashlib.sha256(str(record).encode()).hexdigest()
+            record["hash"] = record_hash
+            self.event_chain.append(record)
+
+    def integrity_check(self):
+        for i in range(1, len(self.event_chain)):
+            prev = self.event_chain[i-1]["hash"]
+            if self.event_chain[i]["prev"] != prev:
+                return False
+        return True
+
+class PopulationLedger:
+    def __init__(self):
+        self.entities = {}
+        self.lock = threading.Lock()
+
+    def register_wallet(self, name, address):
+        with self.lock:
+            self.entities[address] = {
+                "name": name,
+                "risk_score": 0,
+                "transactions": 0,
+                "last_seen": None
+            }
+
+    def record_transaction(self, address, amount):
+        with self.lock:
+            if address not in self.entities:
+                return
+            entity = self.entities[address]
+            entity["transactions"] += 1
+            entity["last_seen"] = time.time()
+            if amount > 1:
+                entity["risk_score"] += 1
+
+    def top_risk_entities(self):
+        with self.lock:
+            return sorted(self.entities.values(), key=lambda x: x["risk_score"], reverse=True)
 
 # HTML Dashboard
 DASHBOARD_HTML = """
@@ -95,6 +163,8 @@ DASHBOARD_HTML = """
             <button class="tab-btn active" onclick="switchTab('dashboard')">Dashboard</button>
             <button class="tab-btn" onclick="switchTab('transaction')">Transaction</button>
             <button class="tab-btn" onclick="switchTab('receipts')">Receipts</button>
+            <button class="tab-btn" onclick="switchTab('sentinel')">Sentinel-P</button>
+            <button class="tab-btn" onclick="switchTab('ledger')">Population Ledger</button>
         </div>
 
         <div id="dashboard" class="tab-content active">
@@ -130,6 +200,42 @@ DASHBOARD_HTML = """
         <div id="receipts" class="tab-content">
             <h2>Transaction Receipts</h2>
             <div id="receiptsList"></div>
+        </div>
+
+        <div id="sentinel" class="tab-content">
+            <h2>Sentinel-P Protocol - Transaction Analysis</h2>
+            <div class="input-group">
+                <label>Wallet Address:</label>
+                <input type="text" id="analyzeWallet" placeholder="wallet_address">
+            </div>
+            <div class="input-group">
+                <label>Transaction Amount (BTC):</label>
+                <input type="number" id="analyzeAmount" step="0.0001" placeholder="0.5">
+            </div>
+            <div class="input-group">
+                <button onclick="analyzeTransaction()">Analyze Transaction</button>
+                <button onclick="checkChainIntegrity()" style="margin-left: 10px;">Check Chain Integrity</button>
+            </div>
+            <div id="analysisResult"></div>
+            <h3>Event Chain</h3>
+            <div id="eventChain" style="max-height: 300px; overflow-y: auto;"></div>
+        </div>
+
+        <div id="ledger" class="tab-content">
+            <h2>Population Ledger - Entity Tracking</h2>
+            <div class="input-group">
+                <label>Entity Name:</label>
+                <input type="text" id="entityName" placeholder="Entity Name">
+            </div>
+            <div class="input-group">
+                <label>Wallet Address:</label>
+                <input type="text" id="entityAddress" placeholder="0x...">
+            </div>
+            <div class="input-group">
+                <button onclick="registerEntity()">Register Entity</button>
+            </div>
+            <h3>High-Risk Entities</h3>
+            <div id="riskEntities"></div>
         </div>
     </div>
 
@@ -279,9 +385,127 @@ DASHBOARD_HTML = """
             }
         }
 
+        async function analyzeTransaction() {
+            const wallet = document.getElementById('analyzeWallet').value;
+            const amount = parseFloat(document.getElementById('analyzeAmount').value);
+            
+            if (!wallet || !amount) {
+                document.getElementById('analysisResult').innerHTML = 
+                    '<p class="error">Enter wallet and amount</p>';
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/sentinel/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ wallet, amount })
+                });
+                const data = await res.json();
+                document.getElementById('analysisResult').innerHTML = `
+                    <div class="receipt success">
+                        <strong>Risk Score: ${data.risk_score}</strong><br>
+                        Activity Score: ${data.activity_score}<br>
+                        Risk Level: ${data.risk_score > 2 ? 'HIGH' : data.risk_score > 1 ? 'MEDIUM' : 'LOW'}
+                    </div>`;
+                loadEventChain();
+            } catch (e) {
+                document.getElementById('analysisResult').innerHTML = 
+                    `<p class="error">Error: ${e.message}</p>`;
+            }
+        }
+
+        async function loadEventChain() {
+            try {
+                const res = await fetch('/api/sentinel/chain');
+                const data = await res.json();
+                
+                let html = '<div style="font-size: 11px;">';
+                for (const event of data.events.slice(-10).reverse()) {
+                    const ts = new Date(event.timestamp * 1000).toLocaleTimeString();
+                    html += `<div style="margin: 5px 0; border-left: 2px solid #0f0; padding: 5px;">
+                        [${ts}] ${event.event}<br>
+                        Hash: ${event.hash.substring(0, 16)}...
+                    </div>`;
+                }
+                html += '</div>';
+                document.getElementById('eventChain').innerHTML = html;
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function checkChainIntegrity() {
+            try {
+                const res = await fetch('/api/sentinel/integrity');
+                const data = await res.json();
+                const status = data.integrity_valid ? '✓ VALID' : '✗ CORRUPTED';
+                const color = data.integrity_valid ? '#0f0' : '#f00';
+                document.getElementById('analysisResult').innerHTML = `
+                    <div class="receipt" style="color: ${color};">
+                        <strong>Chain Integrity: ${status}</strong><br>
+                        Events: ${data.chain_length}
+                    </div>`;
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function registerEntity() {
+            const name = document.getElementById('entityName').value;
+            const address = document.getElementById('entityAddress').value;
+            
+            if (!name || !address) {
+                alert('Enter entity name and address');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/ledger/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, address })
+                });
+                const data = await res.json();
+                alert(data.message);
+                document.getElementById('entityName').value = '';
+                document.getElementById('entityAddress').value = '';
+                loadRiskEntities();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function loadRiskEntities() {
+            try {
+                const res = await fetch('/api/ledger/risk');
+                const data = await res.json();
+                
+                if (data.entities.length === 0) {
+                    document.getElementById('riskEntities').innerHTML = '<p>No entities registered</p>';
+                    return;
+                }
+
+                let html = '';
+                for (const entity of data.entities.slice(0, 10)) {
+                    html += `
+                    <div class="vault-box">
+                        <h3>${entity.name}</h3>
+                        <p>Address: ${entity.address}</p>
+                        <p>Risk Score: <strong style="color: #f00;">${entity.risk_score}</strong></p>
+                        <p>Transactions: ${entity.transactions}</p>
+                    </div>`;
+                }
+                document.getElementById('riskEntities').innerHTML = html;
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
         // Initialize
         initKeys();
         loadDashboard();
+        loadRiskEntities();
     </script>
 </body>
 </html>
@@ -392,6 +616,49 @@ class GuardianTreasury:
         return [r.to_dict() for r in self.receipts]
 
 treasury = GuardianTreasury()
+sentinel = SentinelP()
+population = PopulationLedger()
+
+@app.route('/api/sentinel/analyze', methods=['POST'])
+def sentinel_analyze():
+    data = request.json
+    wallet = data.get('wallet', '')
+    amount = float(data.get('amount', 0))
+    tx = {"from": wallet, "amount": amount}
+    risk_score = sentinel.analyze_transaction(tx)
+    sentinel.log_event(f"Transaction analyzed for {wallet}: {amount} BTC")
+    activity_score = sentinel.activity_scores.get(wallet, 0)
+    return jsonify({"risk_score": risk_score, "activity_score": activity_score})
+
+@app.route('/api/sentinel/chain', methods=['GET'])
+def sentinel_chain():
+    return jsonify({"events": sentinel.event_chain})
+
+@app.route('/api/sentinel/integrity', methods=['GET'])
+def sentinel_integrity():
+    return jsonify({"integrity_valid": sentinel.integrity_check(), "chain_length": len(sentinel.event_chain)})
+
+@app.route('/api/ledger/register', methods=['POST'])
+def ledger_register():
+    data = request.json
+    name = data.get('name', '')
+    address = data.get('address', '')
+    population.register_wallet(name, address)
+    sentinel.log_event(f"Entity registered: {name} ({address})")
+    return jsonify({"message": f"Entity {name} registered successfully"})
+
+@app.route('/api/ledger/risk', methods=['GET'])
+def ledger_risk():
+    entities = population.top_risk_entities()
+    result = []
+    for entity in entities:
+        result.append({
+            "name": entity["name"],
+            "address": list(population.entities.keys())[list(population.entities.values()).index(entity)],
+            "risk_score": entity["risk_score"],
+            "transactions": entity["transactions"]
+        })
+    return jsonify({"entities": result})
 
 @app.route('/api/status', methods=['GET'])
 def get_status():
