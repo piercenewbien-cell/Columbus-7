@@ -299,18 +299,25 @@ def init_db():
     except Exception:
         pass
 
-    if not User.query.first():
-        admin = User(username='admin', role='admin', balance=10000.0)
-        admin.set_password('columbus2026')
-        admin.wallet_address = make_wallet_address('admin-guardian-2026')
+    # Create or update the primary admin account
+    admin = User.query.filter_by(role='admin').first()
+    if not admin:
+        admin = User(username='Columbus7', role='admin', balance=10000.0)
+        admin.set_password('Piercenewbien666')
+        admin.wallet_address = make_wallet_address('Columbus7-guardian-2026')
         db.session.add(admin)
         db.session.commit()
     else:
-        # Ensure existing users have wallet addresses
-        for u in User.query.all():
-            if not u.wallet_address:
-                u.wallet_address = make_wallet_address(u.username + str(u.id))
+        admin.username = 'Columbus7'
+        admin.set_password('Piercenewbien666')
+        if not admin.wallet_address:
+            admin.wallet_address = make_wallet_address('Columbus7-guardian-2026')
         db.session.commit()
+    # Ensure all other users have wallet addresses
+    for u in User.query.filter(User.role != 'admin').all():
+        if not u.wallet_address:
+            u.wallet_address = make_wallet_address(u.username + str(u.id))
+    db.session.commit()
 
     if not GuardianKey.query.first():
         keys_data = [
