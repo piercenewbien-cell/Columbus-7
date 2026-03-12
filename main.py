@@ -622,10 +622,20 @@ def new_transaction():
 @app.route('/receipt/<txid>')
 @login_required
 def receipt(txid):
-    tx = Transaction.query.filter_by(txid=txid).first_or_404()
-    block = Block.query.filter_by(block_number=tx.block_number).first()
-    keys_used = json.loads(tx.guardian_keys)
-    return render_template('receipt.html', tx=tx, block=block, keys_used=keys_used)
+    tx = Transaction.query.filter_by(txid=txid).first()
+    if tx:
+        block = Block.query.filter_by(block_number=tx.block_number).first()
+        keys_used = json.loads(tx.guardian_keys) if tx.guardian_keys else []
+        return render_template('receipt.html', tx=tx, block=block,
+                               keys_used=keys_used, pending=False)
+    # TX not yet mined — check pending queue
+    pending_entry = next((t for t in pending_user_tx if t['txid'] == txid), None)
+    if pending_entry:
+        return render_template('receipt.html', tx=None, block=None,
+                               keys_used=[], pending=True, pending_tx=pending_entry,
+                               txid=txid)
+    return render_template('receipt.html', tx=None, block=None,
+                           keys_used=[], pending=False, not_found=True, txid=txid)
 
 @app.route('/qr/<wallet_address>')
 @login_required
@@ -793,10 +803,13 @@ def send():
         receiver_user = User.query.filter_by(username=receiver_input).first()
         if not receiver_user:
             receiver_user = User.query.filter_by(wallet_address=receiver_input).first()
-        receiver_addr = receiver_user.wallet_address if receiver_user else receiver_input
+        if not receiver_user:
+            flash(f'Recipient "{receiver_input}" not found. Check the username and try again.')
+            return redirect(url_for('send'))
+        receiver_addr = receiver_user.wallet_address
         if receiver_addr == current_user.wallet_address:
             flash('Cannot send to your own wallet.')
-            return redirect(request.referrer or url_for('send'))
+            return redirect(url_for('send'))
         fee = round(amount * 0.001, 8)
         # Deduct from sender
         if asset == 'COL':
@@ -820,8 +833,7 @@ def send():
         log_node_event('TX-Node',
             f"User TX queued: {current_user.username} → {receiver_input} | {amount:,.6f} {asset} | Note: {note or 'None'}",
             'TX')
-        flash(f'Transfer of {amount:,.6f} {asset} queued for mining! TXID: {tx_entry["txid"][:16]}...')
-        return redirect(url_for('send'))
+        return redirect(url_for('receipt', txid=tx_entry['txid']))
     my_txs = Transaction.query.filter_by(sender=current_user.wallet_address)\
         .order_by(Transaction.timestamp.desc()).limit(8).all()
     return render_template('send.html', pending=pending_user_tx,

@@ -5,118 +5,254 @@
 <div class="page-header">
   <div>
     <div class="page-title">TRANSACTION RECEIPT</div>
-    <div class="page-subtitle">OFFICIAL COLUMBUS-Ω RECEIPT · QUANTUM CERTIFIED</div>
+    <div class="page-subtitle">COLUMBUS-Ω OFFICIAL RECEIPT · GUARDIAN CERTIFIED</div>
   </div>
   <div class="page-actions">
-    <button class="btn btn-green btn-sm" onclick="window.print()">🖨 PRINT</button>
-    <a href="{{ url_for('transaction_detail', txid=tx.txid) }}" class="btn btn-cyan btn-sm">← BACK</a>
+    {% if tx %}
+      <button class="btn btn-green btn-sm" onclick="window.print()">🖨 PRINT</button>
+      <a href="{{ url_for('transaction_detail', txid=tx.txid) }}" class="btn btn-cyan btn-sm">⬡ FULL DETAIL</a>
+    {% endif %}
+    <a href="{{ url_for('send') }}" class="btn btn-cyan btn-sm">← SEND PAGE</a>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-cyan btn-sm">◈ DASHBOARD</a>
   </div>
 </div>
 
-<div class="receipt-paper">
-  <div class="receipt-logo">COL-Ω TREASURY</div>
-  <div style="text-align:center;font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:3px;margin-bottom:20px;">
-    OFFICIAL TRANSACTION RECEIPT
-  </div>
+<!-- ── PENDING STATE ── -->
+{% if pending %}
+<div style="max-width:640px;margin:0 auto;">
+  <div class="card" style="text-align:center;border-color:rgba(255,204,0,0.3);background:linear-gradient(135deg,rgba(255,204,0,0.04),var(--bg-card));">
+    <div style="font-size:48px;margin-bottom:10px;">⌛</div>
+    <div style="font-family:var(--font-head);font-size:22px;color:var(--yellow);font-weight:900;letter-spacing:3px;margin-bottom:6px;">
+      TRANSACTION QUEUED
+    </div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:20px;">
+      MINING IN PROGRESS — AUTO-REFRESHING
+    </div>
 
-  <hr class="receipt-divider">
+    <div style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,204,0,0.2);border-radius:4px;padding:20px;margin-bottom:20px;text-align:left;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-family:var(--font-mono);font-size:11px;">
+        <div>
+          <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:3px;">TXID</div>
+          <div style="color:var(--cyan);font-size:10px;word-break:break-all;">{{ pending_tx.txid[:32] }}...</div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:3px;">ASSET</div>
+          <div style="color:{% if pending_tx.get('asset','COL')=='BTC' %}var(--orange){% else %}var(--green){% endif %};font-weight:700;">
+            {{ pending_tx.get('asset','COL') }}
+          </div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:3px;">FROM</div>
+          <div style="color:var(--text);">{{ pending_tx.sender }}</div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:3px;">TO</div>
+          <div style="color:var(--text);">{{ pending_tx.receiver }}</div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:3px;">AMOUNT</div>
+          <div style="font-family:var(--font-head);font-size:18px;
+            color:{% if pending_tx.get('asset','COL')=='BTC' %}var(--orange){% else %}var(--green){% endif %};font-weight:900;">
+            {{ "{:,.6f}".format(pending_tx.amount) }} {{ pending_tx.get('asset','COL') }}
+          </div>
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:3px;">STATUS</div>
+          <div><span class="badge badge-yellow" style="background:rgba(255,204,0,0.15);color:var(--yellow);border-color:rgba(255,204,0,0.3);">⌛ PENDING MINING</span></div>
+        </div>
+      </div>
+      {% if pending_tx.note %}
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+        <div style="font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:3px;font-family:var(--font-mono);">NOTE</div>
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text);">{{ pending_tx.note }}</div>
+      </div>
+      {% endif %}
+    </div>
 
-  <div class="receipt-row">
-    <span class="receipt-label">TRANSACTION ID</span>
-    <span class="receipt-value cyan">{{ tx.txid }}</span>
-  </div>
-  <div class="receipt-row">
-    <span class="receipt-label">QUANTUM SIGNATURE</span>
-    <span class="receipt-value" style="color:var(--purple);">{{ tx.quantum_sig }}</span>
-  </div>
-  <div class="receipt-row">
-    <span class="receipt-label">TIMESTAMP</span>
-    <span class="receipt-value">{{ tx.timestamp.strftime('%Y-%m-%d %H:%M:%S UTC') }}</span>
-  </div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-bottom:16px;">
+      This page will automatically refresh every 5 seconds until the transaction is confirmed on-chain.
+    </div>
 
-  <hr class="receipt-divider">
+    <div class="progress-bar" style="height:4px;margin-bottom:16px;">
+      <div class="progress-fill" style="width:100%;animation:pulse 1.5s ease-in-out infinite;"></div>
+    </div>
 
-  <div class="receipt-row">
-    <span class="receipt-label">FROM WALLET</span>
-    <span class="receipt-value cyan">{{ tx.sender }}</span>
-  </div>
-  <div class="receipt-row">
-    <span class="receipt-label">TO WALLET</span>
-    <span class="receipt-value cyan">{{ tx.receiver }}</span>
-  </div>
-
-  <hr class="receipt-divider">
-
-  <div class="receipt-row">
-    <span class="receipt-label">AMOUNT</span>
-    <span class="receipt-value green" style="font-family:var(--font-head);font-size:18px;font-weight:900;">
-      {{ "{:,.4f}".format(tx.amount) }} COL
-    </span>
-  </div>
-  <div class="receipt-row">
-    <span class="receipt-label">NETWORK FEE</span>
-    <span class="receipt-value" style="color:var(--orange);">{{ "{:,.6f}".format(tx.fee) }} COL</span>
-  </div>
-  <div class="receipt-row">
-    <span class="receipt-label">TRANSACTION TYPE</span>
-    <span class="receipt-value">{{ tx.tx_type }}</span>
-  </div>
-  <div class="receipt-row">
-    <span class="receipt-label">STATUS</span>
-    <span class="receipt-value green">✓ {{ tx.status }}</span>
-  </div>
-
-  <hr class="receipt-divider">
-
-  {% if block %}
-  <div class="receipt-row">
-    <span class="receipt-label">BLOCK NUMBER</span>
-    <span class="receipt-value" style="color:var(--purple);">#{{ block.block_number }}</span>
-  </div>
-  <div class="receipt-row">
-    <span class="receipt-label">BLOCK HASH</span>
-    <span class="receipt-value cyan" style="font-size:10px;">{{ block.block_hash }}</span>
-  </div>
-  <div class="receipt-row">
-    <span class="receipt-label">NONCE</span>
-    <span class="receipt-value">{{ "{:,}".format(block.nonce) }}</span>
-  </div>
-  <hr class="receipt-divider">
-  {% endif %}
-
-  <div class="receipt-row">
-    <span class="receipt-label">GUARDIAN KEYS</span>
-    <span class="receipt-value">{{ keys_used|join(', ') }}</span>
-  </div>
-  <div class="receipt-row">
-    <span class="receipt-label">SIGNATURE POLICY</span>
-    <span class="receipt-value">{{ keys_used|length }}-OF-7 MULTI-SIG</span>
-  </div>
-
-  <hr class="receipt-divider">
-
-  <div class="receipt-row">
-    <span class="receipt-label">AI RISK SCORE</span>
-    <span class="receipt-value" style="{% if tx.ai_risk_score > 70 %}color:var(--red);{% elif tx.ai_risk_score > 40 %}color:var(--orange);{% else %}color:var(--green);{% endif %}">
-      {{ "%.2f"|format(tx.ai_risk_score) }}%
-    </span>
-  </div>
-  <div class="receipt-row">
-    <span class="receipt-label">FRAUD STATUS</span>
-    <span class="receipt-value {% if tx.fraud_flag %}" style="color:var(--red);">⚠ FLAGGED{% else %}green">✓ CLEAR{% endif %}</span>
-  </div>
-
-  <hr class="receipt-divider">
-
-  <div style="text-align:center;margin-top:20px;">
-    <img src="{{ url_for('qr_code', wallet_address=tx.txid[:38]) }}" alt="TX QR" style="width:120px;height:120px;">
-    <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);margin-top:8px;letter-spacing:2px;">TRANSACTION QR CODE</div>
-  </div>
-
-  <div style="text-align:center;margin-top:20px;font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;">
-    COLUMBUS-Ω GUARDIAN TREASURY SYSTEM V2<br>
-    ALL TRANSACTIONS ARE FINAL AND IMMUTABLE
+    <a href="{{ url_for('receipt', txid=txid) }}" class="btn btn-green btn-sm">↻ REFRESH STATUS</a>
   </div>
 </div>
+{% elif not_found %}
+<div style="max-width:500px;margin:0 auto;">
+  <div class="card" style="text-align:center;border-color:rgba(255,0,0,0.2);">
+    <div style="font-size:40px;margin-bottom:10px;">⚠</div>
+    <div style="font-family:var(--font-head);font-size:20px;color:var(--red);font-weight:900;letter-spacing:3px;margin-bottom:8px;">RECEIPT NOT FOUND</div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-bottom:16px;">
+      TXID: {{ txid[:32] if txid else 'unknown' }}...
+    </div>
+    <div style="font-family:var(--font-mono);font-size:11px;color:var(--text);margin-bottom:20px;">
+      This transaction could not be located. It may still be processing.
+    </div>
+    <a href="{{ url_for('send') }}" class="btn btn-cyan btn-sm">← BACK TO SEND</a>
+  </div>
+</div>
+{% elif tx %}
+<!-- ── CONFIRMED RECEIPT ── -->
+<div style="max-width:680px;margin:0 auto;">
 
+  <!-- Status banner -->
+  <div style="background:rgba(0,255,136,0.06);border:1px solid rgba(0,255,136,0.25);border-radius:4px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-size:24px;">✅</span>
+      <div>
+        <div style="font-family:var(--font-head);font-size:16px;color:var(--green);font-weight:900;letter-spacing:2px;">TRANSACTION CONFIRMED</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;">IMMUTABLY RECORDED ON THE COLUMBUS-Ω BLOCKCHAIN</div>
+      </div>
+    </div>
+    <span class="badge badge-green" style="font-size:11px;padding:5px 12px;">✓ {{ tx.status }}</span>
+  </div>
+
+  <div class="receipt-paper">
+    <!-- Header -->
+    <div class="receipt-logo">COL-Ω TREASURY</div>
+    <div style="text-align:center;font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:3px;margin-bottom:4px;">
+      OFFICIAL TRANSACTION RECEIPT
+    </div>
+    <div style="text-align:center;font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:20px;">
+      {{ tx.timestamp.strftime('%B %d, %Y at %H:%M:%S UTC') }}
+    </div>
+
+    <hr class="receipt-divider">
+
+    <!-- Amount — hero row -->
+    <div style="text-align:center;padding:16px 0;">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:3px;margin-bottom:6px;">AMOUNT TRANSFERRED</div>
+      <div style="font-family:var(--font-head);font-size:36px;font-weight:900;
+        color:{% if tx.tx_type == 'BTC-TRANSFER' %}var(--orange){% else %}var(--green){% endif %};
+        text-shadow:0 0 30px {% if tx.tx_type == 'BTC-TRANSFER' %}rgba(255,140,0,0.4){% else %}rgba(0,255,136,0.4){% endif %};">
+        {{ "{:,.6f}".format(tx.amount) }}
+        <span style="font-size:16px;opacity:0.7;">{% if tx.tx_type == 'BTC-TRANSFER' %}BTC{% else %}COL{% endif %}</span>
+      </div>
+      {% if tx.tx_type == 'BTC-TRANSFER' %}
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:4px;">
+        ≈ ${{ "{:,.2f}".format(tx.amount * 26000) }} USD
+      </div>
+      {% else %}
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);margin-top:4px;">
+        ≈ ${{ "{:,.2f}".format(tx.amount * 10) }} USD
+      </div>
+      {% endif %}
+    </div>
+
+    <hr class="receipt-divider">
+
+    <!-- Wallets -->
+    <div class="receipt-row">
+      <span class="receipt-label">FROM WALLET</span>
+      <span class="receipt-value cyan" style="font-size:10px;">{{ tx.sender }}</span>
+    </div>
+    <div class="receipt-row">
+      <span class="receipt-label">TO WALLET</span>
+      <span class="receipt-value cyan" style="font-size:10px;">{{ tx.receiver }}</span>
+    </div>
+
+    <hr class="receipt-divider">
+
+    <!-- TX Details -->
+    <div class="receipt-row">
+      <span class="receipt-label">TRANSACTION ID</span>
+      <span class="receipt-value" style="color:var(--text);font-size:9px;word-break:break-all;">{{ tx.txid }}</span>
+    </div>
+    <div class="receipt-row">
+      <span class="receipt-label">QUANTUM SIGNATURE</span>
+      <span class="receipt-value" style="color:var(--purple);font-size:10px;">{{ tx.quantum_sig }}</span>
+    </div>
+    <div class="receipt-row">
+      <span class="receipt-label">ASSET TYPE</span>
+      <span class="receipt-value" style="color:{% if tx.tx_type == 'BTC-TRANSFER' %}var(--orange){% else %}var(--green){% endif %};">
+        {{ tx.tx_type }}
+      </span>
+    </div>
+    <div class="receipt-row">
+      <span class="receipt-label">NETWORK FEE</span>
+      <span class="receipt-value" style="color:var(--orange);">{{ "{:,.8f}".format(tx.fee) }}</span>
+    </div>
+
+    <hr class="receipt-divider">
+
+    {% if block %}
+    <div class="receipt-row">
+      <span class="receipt-label">BLOCK NUMBER</span>
+      <span class="receipt-value" style="color:var(--purple);font-family:var(--font-head);font-size:16px;font-weight:900;">#{{ block.block_number }}</span>
+    </div>
+    <div class="receipt-row">
+      <span class="receipt-label">BLOCK HASH</span>
+      <span class="receipt-value cyan" style="font-size:9px;word-break:break-all;">{{ block.block_hash }}</span>
+    </div>
+    <div class="receipt-row">
+      <span class="receipt-label">NONCE</span>
+      <span class="receipt-value">{{ "{:,}".format(block.nonce) }}</span>
+    </div>
+    <hr class="receipt-divider">
+    {% endif %}
+
+    <!-- Guardian keys -->
+    <div class="receipt-row">
+      <span class="receipt-label">GUARDIAN KEYS</span>
+      <span class="receipt-value">{{ keys_used|join(', ') if keys_used else 'AUTO-SIGNED' }}</span>
+    </div>
+    <div class="receipt-row">
+      <span class="receipt-label">SIGNATURE POLICY</span>
+      <span class="receipt-value">{{ keys_used|length }}-OF-7 MULTI-SIG</span>
+    </div>
+
+    <hr class="receipt-divider">
+
+    <!-- AI Risk -->
+    <div class="receipt-row">
+      <span class="receipt-label">AI RISK SCORE</span>
+      <span class="receipt-value" style="
+        {% if tx.ai_risk_score > 70 %}color:var(--red);
+        {% elif tx.ai_risk_score > 40 %}color:var(--orange);
+        {% else %}color:var(--green);{% endif %}">
+        {{ "%.2f"|format(tx.ai_risk_score) }}%
+      </span>
+    </div>
+    <div class="receipt-row">
+      <span class="receipt-label">FRAUD STATUS</span>
+      {% if tx.fraud_flag %}
+        <span class="receipt-value" style="color:var(--red);">⚠ FLAGGED</span>
+      {% else %}
+        <span class="receipt-value green">✓ CLEAR</span>
+      {% endif %}
+    </div>
+
+    <hr class="receipt-divider">
+
+    <!-- QR -->
+    <div style="text-align:center;margin-top:20px;">
+      <img src="{{ url_for('qr_code', wallet_address=tx.txid[:38]) }}"
+           alt="TX QR" style="width:120px;height:120px;border:1px solid var(--border);border-radius:3px;">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);margin-top:8px;letter-spacing:2px;">
+        TRANSACTION QR CODE
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:20px;font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;line-height:1.8;">
+      COLUMBUS-Ω GUARDIAN TREASURY SYSTEM V4<br>
+      ALL TRANSACTIONS ARE FINAL AND IMMUTABLE<br>
+      {{ tx.timestamp.strftime('%Y-%m-%d %H:%M:%S UTC') }}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{% if pending %}
+<script>
+  setTimeout(function() {
+    window.location.reload();
+  }, 5000);
+</script>
+{% endif %}
 {% endblock %}
