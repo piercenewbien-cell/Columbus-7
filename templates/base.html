@@ -53,6 +53,20 @@
     <a href="{{ url_for('population') }}" class="nav-item {% if request.endpoint in ['population','population_add','population_update'] %}active{% endif %}">
       <span class="nav-icon">👥</span><span>Population</span>
     </a>
+    <a href="{{ url_for('guardian_qr_page') }}" class="nav-item {% if request.endpoint == 'guardian_qr_page' %}active{% endif %}">
+      <span class="nav-icon">🛡</span><span>Guardian QR</span>
+    </a>
+  </div>
+
+  <div class="nav-section" style="padding:10px 0;">
+    <div style="padding:10px 20px;background:rgba(0,255,136,0.04);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:4px;">MY WALLET BALANCE</div>
+      <div style="font-family:var(--font-head);font-size:17px;color:var(--green);font-weight:900;text-shadow:0 0 15px rgba(0,255,136,0.4);">
+        {{ "{:,.2f}".format(current_user.balance) }}
+        <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);font-weight:400;">COL</span>
+      </div>
+      <a href="{{ url_for('send') }}" style="display:inline-block;margin-top:6px;font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:var(--cyan);text-decoration:none;border:1px solid var(--cyan);padding:3px 10px;border-radius:2px;">▶ SEND</a>
+    </div>
   </div>
 
   <div class="sidebar-user">

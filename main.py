@@ -25,11 +25,15 @@ login_manager.login_message = 'Access denied. Authentication required.'
 
 # ─── DATABASE MODELS ──────────────────────────────────────────────────────────
 
+GUARDIAN_WALLET = "bc1qguardianwallet2026node-columbus-omega-v2"
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(20), default='operator')
+    balance = db.Column(db.Float, default=1000.0)
+    wallet_address = db.Column(db.String(50), default='')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def set_password(self, password):
@@ -193,11 +197,44 @@ def _auto_miner():
     while True:
         try:
             with app.app_context():
+                # Process vault pending TXs
                 pending = Transaction.query.filter_by(block_number=None, status='CONFIRMED').limit(5).all()
-                if pending:
-                    txids = [t.txid for t in pending]
+                all_txids = [t.txid for t in pending]
+                # Process user-to-user pending TXs
+                while pending_user_tx:
+                    utx = pending_user_tx.pop(0)
+                    keys_used = [k.name for k in GuardianKey.query.limit(3).all()]
+                    risk, analysis, fraud = ai_analyze_transaction(
+                        utx['amount'], utx['sender_wallet'], utx['receiver_wallet'], 'TRANSFER')
+                    t = Transaction(
+                        txid=utx['txid'],
+                        sender=utx['sender_wallet'],
+                        receiver=utx['receiver_wallet'],
+                        amount=utx['amount'],
+                        fee=utx['fee'],
+                        tx_type='USER-TRANSFER',
+                        status='CONFIRMED',
+                        guardian_keys=json.dumps(keys_used),
+                        quantum_sig=make_quantum_sig(),
+                        ai_risk_score=risk,
+                        ai_analysis=analysis,
+                        fraud_flag=fraud
+                    )
+                    db.session.add(t)
+                    # Credit receiver if they're a registered user
+                    rv = utx.get('receiver_user')
+                    if rv:
+                        recv_db = User.query.get(rv.id)
+                        if recv_db:
+                            recv_db.balance += utx['amount']
+                    db.session.commit()
+                    all_txids.append(utx['txid'])
+                    log_node_event('TX-Node',
+                        f"User TX confirmed: {utx['sender']} → {utx['receiver']} | {utx['amount']:,.4f} COL",
+                        'TX')
+                if all_txids:
                     miner = f"Columbus-Ω Node-{random.randint(1, 3)}"
-                    block = mine_block(txids, miner=miner)
+                    block = mine_block(all_txids, miner=miner)
                     for t in pending:
                         t.block_number = block.block_number
                     db.session.commit()
@@ -239,12 +276,40 @@ def mine_block(txids, miner='Columbus-Ω Node-1'):
     log_node_event(miner, f"Block #{block_num} mined | Hash: {candidate[:16]}... | Nonce: {nonce}", 'BLOCK')
     return block
 
+pending_user_tx = []
+
 def init_db():
     db.create_all()
+    # Migrate: add balance/wallet_address columns if missing (existing DB)
+    import sqlite3 as _sqlite3
+    try:
+        _con = _sqlite3.connect('instance/columbus_omega.db')
+        _cur = _con.cursor()
+        _cur.execute("ALTER TABLE user ADD COLUMN balance REAL DEFAULT 1000.0")
+        _con.commit()
+        _con.close()
+    except Exception:
+        pass
+    try:
+        _con = _sqlite3.connect('instance/columbus_omega.db')
+        _cur = _con.cursor()
+        _cur.execute("ALTER TABLE user ADD COLUMN wallet_address TEXT DEFAULT ''")
+        _con.commit()
+        _con.close()
+    except Exception:
+        pass
+
     if not User.query.first():
-        admin = User(username='admin', role='admin')
+        admin = User(username='admin', role='admin', balance=10000.0)
         admin.set_password('columbus2026')
+        admin.wallet_address = make_wallet_address('admin-guardian-2026')
         db.session.add(admin)
+        db.session.commit()
+    else:
+        # Ensure existing users have wallet addresses
+        for u in User.query.all():
+            if not u.wallet_address:
+                u.wallet_address = make_wallet_address(u.username + str(u.id))
         db.session.commit()
 
     if not GuardianKey.query.first():
@@ -626,6 +691,105 @@ def api_generate_tx():
         'txid': txid, 'amount': amount, 'block': block.block_number,
         'risk': risk, 'fraud': fraud, 'analysis': analysis
     })
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        password2 = request.form.get('password2', '')
+        if len(username) < 3:
+            flash('Operator ID must be at least 3 characters.')
+            return render_template('register.html')
+        if len(password) < 6:
+            flash('Access key must be at least 6 characters.')
+            return render_template('register.html')
+        if password != password2:
+            flash('Access keys do not match.')
+            return render_template('register.html')
+        if User.query.filter_by(username=username).first():
+            flash('Operator ID already exists. Choose another.')
+            return render_template('register.html')
+        wallet = make_wallet_address(username + str(time.time()))
+        user = User(username=username, role='operator', balance=1000.0, wallet_address=wallet)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        log_node_event('Auth-Node', f"New operator '{username}' registered. Wallet: {wallet[:16]}...", 'AUTH')
+        flash(f'Account created! Welcome, {username}. Starting balance: 1,000 COL. Please log in.')
+        return redirect(url_for('login'))
+    return render_template('register.html')
+
+@app.route('/send', methods=['GET', 'POST'])
+@login_required
+def send():
+    if request.method == 'POST':
+        receiver_input = request.form.get('receiver', '').strip()
+        amount_str = request.form.get('amount', '0')
+        note = request.form.get('note', '')
+        try:
+            amount = float(amount_str)
+        except ValueError:
+            flash('Invalid amount.')
+            return redirect(url_for('send'))
+        if amount <= 0:
+            flash('Amount must be greater than zero.')
+            return redirect(url_for('send'))
+        if amount > current_user.balance:
+            flash(f'Insufficient balance. You have {current_user.balance:,.4f} COL.')
+            return redirect(url_for('send'))
+        # Resolve receiver — by username or wallet address
+        receiver_user = User.query.filter_by(username=receiver_input).first()
+        if not receiver_user:
+            receiver_user = User.query.filter_by(wallet_address=receiver_input).first()
+        receiver_addr = receiver_user.wallet_address if receiver_user else receiver_input
+        if receiver_addr == current_user.wallet_address:
+            flash('Cannot send to your own wallet.')
+            return redirect(url_for('send'))
+        fee = round(amount * 0.001, 6)
+        tx_entry = {
+            'txid': make_txid(f"{current_user.username}{receiver_addr}{amount}{time.time()}{random.random()}"),
+            'sender': current_user.username,
+            'sender_wallet': current_user.wallet_address,
+            'receiver': receiver_input,
+            'receiver_wallet': receiver_addr,
+            'receiver_user': receiver_user,
+            'amount': amount,
+            'fee': fee,
+            'note': note,
+        }
+        current_user.balance -= amount
+        db.session.commit()
+        pending_user_tx.append(tx_entry)
+        log_node_event('TX-Node',
+            f"User TX queued: {current_user.username} → {receiver_input} | {amount:,.4f} COL | Note: {note or 'None'}",
+            'TX')
+        flash(f'Transfer of {amount:,.4f} COL queued for mining! TXID: {tx_entry["txid"][:16]}...')
+        return redirect(url_for('send'))
+    my_txs = Transaction.query.filter_by(sender=current_user.wallet_address)\
+        .order_by(Transaction.timestamp.desc()).limit(8).all()
+    return render_template('send.html', pending=pending_user_tx,
+                           my_txs=my_txs, guardian_wallet=GUARDIAN_WALLET)
+
+@app.route('/guardian-qr')
+@login_required
+def guardian_qr_page():
+    return render_template('guardian_qr.html', guardian_wallet=GUARDIAN_WALLET)
+
+@app.route('/guardian-qr-image')
+@login_required
+def guardian_qr_image():
+    qr = qrcode.QRCode(version=2, box_size=8, border=3,
+                       error_correction=qrcode.constants.ERROR_CORRECT_H)
+    qr.add_data(f"bitcoin:{GUARDIAN_WALLET}")
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="#00ff88", back_color="#020408")
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+    return send_file(buf, mimetype='image/png')
 
 @app.route('/converter')
 @login_required

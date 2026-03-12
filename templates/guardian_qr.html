@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}| Guardian Wallet{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">GUARDIAN WALLET</div>
+    <div class="page-subtitle">SYSTEM TREASURY · NODE FEE COLLECTOR</div>
+  </div>
+</div>
+
+<div style="max-width:500px;margin:0 auto;">
+  <div class="card" style="text-align:center;">
+    <div class="card-title">🛡 GUARDIAN WALLET QR CODE</div>
+
+    <div style="margin:20px auto;display:inline-block;padding:16px;background:#050f08;border:2px solid var(--green);border-radius:4px;box-shadow:0 0 30px rgba(0,255,136,0.15);">
+      <img src="{{ url_for('guardian_qr_image') }}" alt="Guardian Wallet QR" style="width:220px;height:220px;display:block;">
+    </div>
+
+    <div style="margin-top:16px;">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:3px;margin-bottom:6px;">WALLET ADDRESS</div>
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--cyan);word-break:break-all;padding:12px;background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:3px;">
+        {{ guardian_wallet }}
+      </div>
+    </div>
+
+    <div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:left;">
+      <div style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:3px;padding:12px;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:4px;">TYPE</div>
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--green);">SegWit P2WPKH</div>
+      </div>
+      <div style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:3px;padding:12px;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:4px;">NETWORK</div>
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--cyan);">Columbus-Ω</div>
+      </div>
+      <div style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:3px;padding:12px;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:4px;">STATUS</div>
+        <div><span class="badge badge-green">ACTIVE</span></div>
+      </div>
+      <div style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:3px;padding:12px;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:4px;">ROLE</div>
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--orange);">Fee Collector</div>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;">
+      <a href="{{ url_for('guardian_qr_image') }}" download="guardian-wallet-qr.png" class="btn btn-green">
+        ⬇ DOWNLOAD QR
+      </a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

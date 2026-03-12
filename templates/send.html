@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% block title %}| Send COL{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">SEND COL TOKENS</div>
+    <div class="page-subtitle">PEER-TO-PEER TRANSFER · GUARDIAN-VERIFIED</div>
+  </div>
+  <a href="{{ url_for('dashboard') }}" class="btn btn-cyan btn-sm">← BACK</a>
+</div>
+
+{% with messages = get_flashed_messages() %}
+  {% if messages %}{% for msg in messages %}
+    <div class="alert {% if 'success' in msg.lower() or 'sent' in msg.lower() or 'queued' in msg.lower() %}alert-success{% else %}alert-danger{% endif %}">
+      {% if 'queued' in msg.lower() or 'sent' in msg.lower() %}⚡{% else %}⚠{% endif %} {{ msg }}
+    </div>
+  {% endfor %}{% endif %}
+{% endwith %}
+
+<div class="grid-5-7">
+  <div class="card">
+    <div class="card-title">⟳ TRANSFER DETAILS</div>
+
+    <div style="background:rgba(0,255,136,0.06);border:1px solid rgba(0,255,136,0.2);border-radius:3px;padding:14px;margin-bottom:16px;">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:4px;">YOUR WALLET</div>
+      <div style="font-family:var(--font-mono);font-size:11px;color:var(--cyan);word-break:break-all;">{{ current_user.wallet_address }}</div>
+      <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;">AVAILABLE BALANCE</div>
+          <div style="font-family:var(--font-head);font-size:22px;color:var(--green);font-weight:900;">{{ "{:,.4f}".format(current_user.balance) }}</div>
+          <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">COL TOKENS</div>
+        </div>
+        <div class="qr-container" style="padding:8px;">
+          <img src="{{ url_for('qr_code', wallet_address=current_user.wallet_address) }}" style="max-width:70px;" alt="My QR">
+        </div>
+      </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('send') }}">
+      <div class="form-group">
+        <label class="form-label">Recipient Username or Wallet</label>
+        <input type="text" name="receiver" class="form-control"
+               placeholder="Enter username or COL1... address" required autocomplete="off">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);margin-top:4px;">
+          Enter another operator's username or their full wallet address
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Amount (COL)</label>
+        <input type="number" name="amount" class="form-control"
+               step="0.0001" min="0.0001" max="{{ current_user.balance }}"
+               placeholder="0.0000" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Transaction Note (Optional)</label>
+        <input type="text" name="note" class="form-control" placeholder="Optional memo" maxlength="80">
+      </div>
+
+      <div style="background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:3px;padding:12px;margin-bottom:16px;">
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);line-height:1.8;">
+          <div style="display:flex;justify-content:space-between;">
+            <span>Network fee (0.1%):</span><span style="color:var(--orange);">auto-calculated</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span>Mining time:</span><span style="color:var(--cyan);">~10 seconds</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span>Guardian sigs required:</span><span style="color:var(--green);">Auto (system)</span>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-green" style="width:100%;justify-content:center;">
+        ▶ SEND &amp; QUEUE FOR MINING
+      </button>
+    </form>
+  </div>
+
+  <div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">⬡ PENDING QUEUE</div>
+      {% if pending %}
+        {% for tx in pending %}
+        <div style="padding:10px;background:rgba(255,204,0,0.05);border:1px solid rgba(255,204,0,0.2);border-radius:3px;margin-bottom:8px;font-family:var(--font-mono);font-size:11px;">
+          <div style="display:flex;justify-content:space-between;">
+            <span style="color:var(--yellow);">⌛ PENDING</span>
+            <span style="color:var(--text-dim);">~10s to confirm</span>
+          </div>
+          <div style="margin-top:4px;color:var(--text);">{{ tx.sender[:16] }}... → {{ tx.receiver[:16] }}...</div>
+          <div style="color:var(--green);margin-top:2px;font-family:var(--font-head);">{{ "{:,.4f}".format(tx.amount) }} COL</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);padding:16px;text-align:center;">
+          No pending transactions
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">📒 MY RECENT SENDS</div>
+      {% if my_txs %}
+        {% for tx in my_txs %}
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:11px;">
+          <div>
+            <div style="color:var(--text-dim);font-size:9px;">{{ tx.txid[:12] }}...</div>
+            <div style="color:var(--text);">→ {{ tx.receiver[:20] }}...</div>
+            <div style="color:var(--text-dim);font-size:9px;">{{ tx.timestamp.strftime('%m/%d %H:%M') }}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="color:var(--red);">-{{ "{:,.4f}".format(tx.amount) }}</div>
+            <span class="badge badge-green" style="font-size:8px;">{{ tx.status }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);padding:16px;text-align:center;">No outgoing transactions yet</div>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-title">🛡 GUARDIAN WALLET</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);margin-bottom:10px;">
+        System treasury guardian address — all node fees flow here
+      </div>
+      <div style="word-break:break-all;font-family:var(--font-mono);font-size:11px;color:var(--cyan);margin-bottom:12px;">{{ guardian_wallet }}</div>
+      <div style="text-align:center;">
+        <img src="{{ url_for('guardian_qr') }}" alt="Guardian QR" style="max-width:120px;border:1px solid var(--border);border-radius:3px;">
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
