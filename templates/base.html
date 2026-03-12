@@ -12,7 +12,7 @@
 <div class="sidebar">
   <div class="sidebar-logo">
     <span class="logo-symbol">COL-Ω</span>
-    <span class="logo-sub">TREASURY SYSTEM V2</span>
+    <span class="logo-sub">TREASURY SYSTEM V4</span>
   </div>
   <div class="sidebar-status">
     <div class="status-dot"></div>
@@ -60,12 +60,20 @@
 
   <div class="nav-section" style="padding:10px 0;">
     <div style="padding:10px 20px;background:rgba(0,255,136,0.04);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:4px;">MY WALLET BALANCE</div>
-      <div style="font-family:var(--font-head);font-size:17px;color:var(--green);font-weight:900;text-shadow:0 0 15px rgba(0,255,136,0.4);">
-        {{ "{:,.2f}".format(current_user.balance) }}
-        <span style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);font-weight:400;">COL</span>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;margin-bottom:6px;">MY WALLET</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+        <span style="font-family:var(--font-mono);font-size:9px;color:rgba(255,140,0,0.7);">₿ BTC</span>
+        <span style="font-family:var(--font-head);font-size:13px;color:var(--orange);font-weight:700;text-shadow:0 0 10px rgba(255,140,0,0.3);">
+          {{ "%.5f"|format(current_user.btc_balance or 0) }}
+        </span>
       </div>
-      <a href="{{ url_for('send') }}" style="display:inline-block;margin-top:6px;font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:var(--cyan);text-decoration:none;border:1px solid var(--cyan);padding:3px 10px;border-radius:2px;">▶ SEND</a>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-family:var(--font-mono);font-size:9px;color:rgba(0,255,136,0.7);">◈ COL</span>
+        <span style="font-family:var(--font-head);font-size:13px;color:var(--green);font-weight:700;text-shadow:0 0 10px rgba(0,255,136,0.3);">
+          {{ "{:,.2f}".format(current_user.balance) }}
+        </span>
+      </div>
+      <a href="{{ url_for('send') }}" style="display:inline-block;font-family:var(--font-mono);font-size:9px;letter-spacing:2px;color:var(--cyan);text-decoration:none;border:1px solid var(--cyan);padding:3px 10px;border-radius:2px;">▶ SEND</a>
     </div>
   </div>
 

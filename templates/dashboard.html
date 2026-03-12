@@ -5,7 +5,7 @@
 <div class="page-header">
   <div>
     <div class="page-title">COLUMBUS-Ω DASHBOARD</div>
-    <div class="page-subtitle">GUARDIAN TREASURY SYSTEM · REAL-TIME MONITOR</div>
+    <div class="page-subtitle">GUARDIAN TREASURY SYSTEM V4 · REAL-TIME MONITOR</div>
   </div>
   <div class="page-actions">
     <button class="btn btn-cyan btn-sm" onclick="generateTx()">⚡ AUTO-GENERATE TX</button>
@@ -13,18 +13,25 @@
   </div>
 </div>
 
-<div class="stats-grid">
-  <div class="stat-card">
-    <div class="stat-icon">◈</div>
-    <div class="stat-label">Total Vault Balance</div>
-    <div class="stat-value">{{ "{:,.0f}".format(total_vault_balance) }}</div>
-    <div class="stat-sub">COL · 4 VAULT LAYERS</div>
+<!-- ── WALLET ASSETS ── -->
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px;">
+  <div class="stat-card" style="border-color:rgba(255,140,0,0.3);background:linear-gradient(135deg,rgba(255,140,0,0.05),var(--bg-card));">
+    <div class="stat-icon" style="font-size:22px;">₿</div>
+    <div class="stat-label">MY BTC BALANCE</div>
+    <div class="stat-value" style="color:var(--orange);text-shadow:0 0 20px rgba(255,140,0,0.4);">
+      {{ "%.6f"|format(current_user.btc_balance) }}
+    </div>
+    <div class="stat-sub" style="color:var(--orange);opacity:0.7;">
+      ≈ ${{ "{:,.2f}".format(current_user.btc_balance * btc_usd) }} USD
+    </div>
   </div>
-  <div class="stat-card cyan">
-    <div class="stat-icon">⬡</div>
-    <div class="stat-label">Guardian Key Balance</div>
-    <div class="stat-value">{{ "{:,.0f}".format(total_key_balance) }}</div>
-    <div class="stat-sub">COL · 7 ACTIVE KEYS</div>
+  <div class="stat-card" style="border-color:rgba(0,255,136,0.3);background:linear-gradient(135deg,rgba(0,255,136,0.05),var(--bg-card));">
+    <div class="stat-icon" style="font-size:22px;">◈</div>
+    <div class="stat-label">MY COL BALANCE</div>
+    <div class="stat-value">{{ "{:,.2f}".format(current_user.balance) }}</div>
+    <div class="stat-sub" style="color:var(--green);opacity:0.7;">
+      ≈ ${{ "{:,.2f}".format(current_user.balance * col_usd) }} USD
+    </div>
   </div>
   <div class="stat-card purple">
     <div class="stat-icon">⬛</div>
@@ -40,31 +47,124 @@
   </div>
 </div>
 
+<!-- ── SEND + CONVERTER + PROFILE ── -->
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;">
+
+  <!-- SEND CRYPTO -->
+  <div class="card">
+    <div class="card-title">⟳ SEND CRYPTO</div>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}{% for msg in messages %}
+        <div class="alert {% if 'insufficient' in msg.lower() or 'invalid' in msg.lower() or 'error' in msg.lower() %}alert-danger{% else %}alert-success{% endif %}" style="font-size:10px;padding:6px 10px;margin-bottom:8px;">{{ msg }}</div>
+      {% endfor %}{% endif %}
+    {% endwith %}
+    <form method="POST" action="{{ url_for('send') }}">
+      <div class="form-group">
+        <label class="form-label">Recipient (Username or Wallet)</label>
+        <input type="text" name="receiver" class="form-control" placeholder="Username or COL1... address" required autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Amount</label>
+        <input type="number" name="amount" class="form-control" step="0.00001" min="0.00001" placeholder="0.00000" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Asset</label>
+        <select name="asset" class="form-control" id="assetSelect" onchange="updateSendLabel()">
+          <option value="COL">COL — Columbus Coin</option>
+          <option value="BTC">BTC — Bitcoin</option>
+        </select>
+      </div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);margin-bottom:10px;padding:6px 10px;background:rgba(0,0,0,0.3);border-radius:2px;" id="balanceHint">
+        Available: {{ "{:,.4f}".format(current_user.balance) }} COL
+      </div>
+      <button type="submit" class="btn btn-green btn-sm" style="width:100%;justify-content:center;">▶ SEND &amp; QUEUE</button>
+    </form>
+  </div>
+
+  <!-- COL COIN CONVERTER -->
+  <div class="card">
+    <div class="card-title">₿ COL COIN CONVERTER</div>
+    <div style="font-family:var(--font-mono);font-size:10px;margin-bottom:12px;padding:8px;background:rgba(0,0,0,0.3);border-radius:3px;border-left:2px solid var(--orange);">
+      <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-dim);">1 BTC</span><span style="color:var(--orange);">${{ "{:,}".format(btc_usd) }}</span></div>
+      <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-dim);">1 COL</span><span style="color:var(--green);">${{ col_usd }}</span></div>
+      <div style="display:flex;justify-content:space-between;"><span style="color:var(--text-dim);">1 BTC</span><span style="color:var(--cyan);">{{ "{:,.0f}".format(btc_usd / col_usd) }} COL</span></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">BTC Amount</label>
+      <input type="number" id="cvBtc" class="form-control" step="0.00001" placeholder="0.00000" oninput="cvFromBtc()">
+    </div>
+    <div style="text-align:center;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);padding:4px;">⇅</div>
+    <div class="form-group">
+      <label class="form-label">COL Amount</label>
+      <input type="number" id="cvCol" class="form-control" step="0.01" placeholder="0.00" oninput="cvFromCol()">
+    </div>
+    <div id="cvResult" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);text-align:center;min-height:18px;"></div>
+  </div>
+
+  <!-- FINANCIAL PROFILE -->
+  <div class="card">
+    <div class="card-title">🏦 FINANCIAL PROFILE</div>
+    <form method="POST" action="{{ url_for('profile') }}">
+      <div class="form-group">
+        <label class="form-label">Bank Name</label>
+        <input type="text" name="bank" class="form-control"
+               value="{{ current_user.bank_name or '' }}" placeholder="e.g. Chase, Wells Fargo">
+      </div>
+      <div class="form-group">
+        <label class="form-label">$Cashtag</label>
+        <input type="text" name="cash" class="form-control"
+               value="{{ current_user.cashapp_tag or '' }}" placeholder="$YourCashtag">
+      </div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);margin-bottom:10px;line-height:1.6;">
+        {% if current_user.bank_name %}<div>Bank: <span style="color:var(--cyan);">{{ current_user.bank_name }}</span></div>{% endif %}
+        {% if current_user.cashapp_tag %}<div>Cash App: <span style="color:var(--green);">{{ current_user.cashapp_tag }}</span></div>{% endif %}
+        {% if not current_user.bank_name and not current_user.cashapp_tag %}<div style="color:var(--text-dim);">No profile set yet.</div>{% endif %}
+      </div>
+      <button type="submit" class="btn btn-cyan btn-sm" style="width:100%;justify-content:center;">✦ UPDATE PROFILE</button>
+    </form>
+  </div>
+</div>
+
+<!-- ── GUARDIAN WALLETS ── -->
+<div class="card" style="margin-bottom:16px;background:linear-gradient(135deg,rgba(0,255,136,0.03),rgba(0,212,255,0.03));">
+  <div class="card-title">🛡 GUARDIAN WALLET ADDRESSES</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:3px;margin-bottom:6px;">GUARDIAN BTC WALLET</div>
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--orange);word-break:break-all;padding:10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,140,0,0.2);border-radius:3px;">
+        {{ guardian_wallet }}
+      </div>
+    </div>
+    <div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:3px;margin-bottom:6px;">GUARDIAN COL WALLET</div>
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--green);word-break:break-all;padding:10px;background:rgba(0,0,0,0.3);border:1px solid rgba(0,255,136,0.2);border-radius:3px;">
+        {{ guardian_col_wallet }}
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;margin-top:12px;">
+    <a href="{{ url_for('guardian_qr_page') }}" class="btn btn-green btn-sm">⊞ GUARDIAN QR CODE</a>
+    <a href="{{ url_for('send') }}" class="btn btn-cyan btn-sm">⟳ FULL SEND PAGE</a>
+  </div>
+</div>
+
+<!-- ── RECENT TXS + ACTIVITY ── -->
 <div class="grid-7-5">
-  <!-- Recent Transactions -->
   <div class="card">
     <div class="card-title">▶ RECENT TRANSACTIONS</div>
     <div class="table-container">
       <table>
         <thead>
-          <tr>
-            <th>TXID</th>
-            <th>TYPE</th>
-            <th>AMOUNT</th>
-            <th>RISK</th>
-            <th>STATUS</th>
-          </tr>
+          <tr><th>TXID</th><th>TYPE</th><th>AMOUNT</th><th>RISK</th><th>STATUS</th></tr>
         </thead>
         <tbody>
           {% for tx in recent_tx %}
           <tr>
+            <td><a href="{{ url_for('transaction_detail', txid=tx.txid) }}" class="txid-cell">{{ tx.txid[:14] }}...</a></td>
             <td>
-              <a href="{{ url_for('transaction_detail', txid=tx.txid) }}" class="txid-cell">
-                {{ tx.txid[:14] }}...
-              </a>
-            </td>
-            <td>
-              {% if tx.tx_type == 'TRANSFER' %}
+              {% if tx.tx_type in ['BTC-TRANSFER','USER-TRANSFER'] %}
+                <span class="badge badge-orange">{{ tx.tx_type }}</span>
+              {% elif tx.tx_type == 'TRANSFER' %}
                 <span class="badge badge-cyan">{{ tx.tx_type }}</span>
               {% elif tx.tx_type == 'EMERGENCY' %}
                 <span class="badge badge-red">{{ tx.tx_type }}</span>
@@ -72,25 +172,14 @@
                 <span class="badge badge-purple">{{ tx.tx_type }}</span>
               {% endif %}
             </td>
-            <td class="glow-green">{{ "{:,.2f}".format(tx.amount) }}</td>
+            <td class="glow-green">{{ "{:,.4f}".format(tx.amount) }}</td>
             <td>
               {% set risk = tx.ai_risk_score %}
-              {% if risk < 25 %}
-                <span class="risk-bar risk-low"><span class="risk-fill" style="width:{{ risk }}%"></span></span>
-                <span style="color:var(--green);font-size:10px;">{{ "%.0f"|format(risk) }}%</span>
-              {% elif risk < 50 %}
-                <span class="risk-bar risk-med"><span class="risk-fill" style="width:{{ risk }}%"></span></span>
-                <span style="color:var(--yellow);font-size:10px;">{{ "%.0f"|format(risk) }}%</span>
-              {% elif risk < 75 %}
-                <span class="risk-bar risk-high"><span class="risk-fill" style="width:{{ risk }}%"></span></span>
-                <span style="color:var(--orange);font-size:10px;">{{ "%.0f"|format(risk) }}%</span>
-              {% else %}
-                <span class="risk-bar risk-crit"><span class="risk-fill" style="width:{{ risk }}%"></span></span>
-                <span style="color:var(--red);font-size:10px;">{{ "%.0f"|format(risk) }}%</span>
-              {% endif %}
-              {% if tx.fraud_flag %}
-                <span class="badge badge-red" style="margin-left:4px;">FRAUD</span>
-              {% endif %}
+              {% if risk < 25 %}<span style="color:var(--green);font-family:var(--font-mono);font-size:10px;">{{ "%.0f"|format(risk) }}%</span>
+              {% elif risk < 50 %}<span style="color:var(--yellow);font-family:var(--font-mono);font-size:10px;">{{ "%.0f"|format(risk) }}%</span>
+              {% elif risk < 75 %}<span style="color:var(--orange);font-family:var(--font-mono);font-size:10px;">{{ "%.0f"|format(risk) }}%</span>
+              {% else %}<span style="color:var(--red);font-family:var(--font-mono);font-size:10px;">{{ "%.0f"|format(risk) }}%</span>{% endif %}
+              {% if tx.fraud_flag %}<span class="badge badge-red" style="margin-left:4px;">FRAUD</span>{% endif %}
             </td>
             <td><span class="badge badge-green">{{ tx.status }}</span></td>
           </tr>
@@ -103,7 +192,6 @@
     </div>
   </div>
 
-  <!-- Node Activity Feed -->
   <div class="card">
     <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
       <span>⬡ LIVE NODE ACTIVITY</span>
@@ -121,7 +209,7 @@
   </div>
 </div>
 
-<!-- Vault Balances -->
+<!-- ── VAULT + GUARDIAN KEYS ── -->
 <div class="grid-2">
   <div class="card">
     <div class="card-title">▣ VAULT LAYER ARCHITECTURE</div>
@@ -133,21 +221,14 @@
         <span style="font-family:var(--font-mono);font-size:11px;color:var(--text);">
           <span style="color:var(--green);">L{{ vault.access_level }}</span> {{ vault.name }}
         </span>
-        <span style="font-family:var(--font-head);font-size:13px;color:var(--green);font-weight:700;">
-          {{ "{:,.0f}".format(vault.balance) }}
-        </span>
+        <span style="font-family:var(--font-head);font-size:13px;color:var(--green);font-weight:700;">{{ "{:,.0f}".format(vault.balance) }}</span>
       </div>
-      <div class="progress-bar">
-        <div class="progress-fill" style="width:{{ pct }}%"></div>
-      </div>
-      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);margin-top:2px;">
-        {{ "%.1f"|format(pct) }}% of total
-      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:{{ pct }}%"></div></div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);margin-top:2px;">{{ "%.1f"|format(pct) }}% of total</div>
     </div>
     {% endfor %}
   </div>
 
-  <!-- Guardian Keys -->
   <div class="card">
     <div class="card-title">⬡ GUARDIAN KEY STATUS</div>
     {% for key in keys %}
@@ -166,7 +247,7 @@
   </div>
 </div>
 
-<!-- Latest Block Info -->
+<!-- ── LATEST BLOCK ── -->
 {% if latest_block %}
 <div class="card" style="margin-bottom:0;">
   <div class="card-title">⬛ LATEST BLOCK</div>
@@ -199,79 +280,74 @@
   <div class="card" style="width:500px;max-width:90vw;">
     <div class="card-title">⬛ MINING NEW BLOCK</div>
     <div class="mining-display" id="mineLog">Initializing proof-of-work engine...</div>
-    <div style="margin-top:12px;display:flex;gap:8px;">
-      <button class="btn btn-green btn-sm" onclick="closeMineModal()">CLOSE</button>
-    </div>
+    <div style="margin-top:12px;"><button class="btn btn-green btn-sm" onclick="closeMineModal()">CLOSE</button></div>
   </div>
 </div>
 
 {% endblock %}
-
 {% block scripts %}
 <script>
+const BTC_USD = {{ btc_usd }};
+const COL_USD = {{ col_usd }};
+
+function updateSendLabel() {
+  const asset = document.getElementById('assetSelect').value;
+  const hint = document.getElementById('balanceHint');
+  if (asset === 'BTC') {
+    hint.textContent = 'Available: {{ "%.6f"|format(current_user.btc_balance) }} BTC ≈ $' +
+      ({{ current_user.btc_balance }} * BTC_USD).toLocaleString('en-US', {maximumFractionDigits:2});
+  } else {
+    hint.textContent = 'Available: {{ "{:,.4f}".format(current_user.balance) }} COL ≈ $' +
+      ({{ current_user.balance }} * COL_USD).toLocaleString('en-US', {maximumFractionDigits:2});
+  }
+}
+
+function cvFromBtc() {
+  const btc = parseFloat(document.getElementById('cvBtc').value) || 0;
+  const col = btc * (BTC_USD / COL_USD);
+  document.getElementById('cvCol').value = col ? col.toFixed(2) : '';
+  document.getElementById('cvResult').textContent = btc
+    ? `${btc} BTC = ${col.toLocaleString()} COL = $${(btc * BTC_USD).toLocaleString()}`
+    : '';
+}
+
+function cvFromCol() {
+  const col = parseFloat(document.getElementById('cvCol').value) || 0;
+  const btc = col * (COL_USD / BTC_USD);
+  document.getElementById('cvBtc').value = btc ? btc.toFixed(8) : '';
+  document.getElementById('cvResult').textContent = col
+    ? `${col} COL = ${btc.toFixed(8)} BTC = $${(col * COL_USD).toLocaleString()}`
+    : '';
+}
+
 function generateTx() {
   const btn = event.target;
   btn.textContent = '⌛ GENERATING...';
   btn.disabled = true;
   fetch('/api/generate-tx').then(r => r.json()).then(d => {
-    if (d.error) { alert(d.error); }
-    else {
-      const msg = `TX Generated!\nTXID: ${d.txid.substring(0,20)}...\nAmount: ${d.amount.toLocaleString()} COL\nBlock: #${d.block}\nRisk: ${d.risk}%`;
-      alert(msg);
-      location.reload();
-    }
-  }).finally(() => {
-    btn.textContent = '⚡ AUTO-GENERATE TX';
-    btn.disabled = false;
-  });
+    if (d.error) alert(d.error);
+    else { alert(`TX Generated!\nTXID: ${d.txid.substring(0,20)}...\nAmount: ${d.amount.toLocaleString()} COL\nBlock: #${d.block}\nRisk: ${d.risk}%`); location.reload(); }
+  }).finally(() => { btn.textContent = '⚡ AUTO-GENERATE TX'; btn.disabled = false; });
 }
 
 function triggerMine() {
   const modal = document.getElementById('mineModal');
   const log = document.getElementById('mineLog');
-  modal.style.display = 'flex';
-  log.innerHTML = '';
-  const lines = [
-    '> Collecting pending transactions...',
-    '> Building merkle tree...',
-    '> Starting proof-of-work (difficulty: 4)...',
-    '> Mining... computing hashes...',
-  ];
+  modal.style.display = 'flex'; log.innerHTML = '';
+  const lines = ['> Collecting pending transactions...','> Building merkle tree...','> Starting proof-of-work (difficulty: 4)...','> Mining... computing hashes...'];
   let i = 0;
-  const interval = setInterval(() => {
-    if (i < lines.length) {
-      log.innerHTML += lines[i] + '\n';
-      i++;
-    }
-  }, 400);
-
-  fetch('/mine', { method: 'POST' }).then(r => r.json()).then(d => {
-    clearInterval(interval);
-    if (d.success) {
-      log.innerHTML += `> ✓ BLOCK #${d.block_number} MINED!\n`;
-      log.innerHTML += `> Hash: ${d.block_hash}\n`;
-      log.innerHTML += `> Nonce: ${d.nonce.toLocaleString()}\n`;
-      log.innerHTML += `> Block added to chain.\n`;
-    }
+  const iv = setInterval(() => { if (i < lines.length) log.innerHTML += lines[i++] + '\n'; }, 400);
+  fetch('/mine', {method:'POST'}).then(r => r.json()).then(d => {
+    clearInterval(iv);
+    if (d.success) log.innerHTML += `> ✓ BLOCK #${d.block_number} MINED!\n> Hash: ${d.block_hash}\n> Nonce: ${d.nonce.toLocaleString()}\n`;
   });
 }
-
-function closeMineModal() {
-  document.getElementById('mineModal').style.display = 'none';
-  location.reload();
-}
-
-// Live feed refresh
+function closeMineModal() { document.getElementById('mineModal').style.display = 'none'; location.reload(); }
 function refreshFeed() {
   fetch('/api/node-feed').then(r => r.json()).then(data => {
-    const feed = document.getElementById('activityFeed');
-    feed.innerHTML = data.map(item => `
-      <div class="activity-item ${item.event_type}">
-        <span class="activity-time">${item.timestamp}</span>
-        <span class="activity-node">${item.node_id}</span>
-        <span class="activity-text">${item.event}</span>
-      </div>
-    `).join('');
+    document.getElementById('activityFeed').innerHTML = data.map(i =>
+      `<div class="activity-item ${i.event_type}"><span class="activity-time">${i.timestamp}</span><span class="activity-node">${i.node_id}</span><span class="activity-text">${i.event}</span></div>`
+    ).join('');
   });
 }
 setInterval(refreshFeed, 10000);

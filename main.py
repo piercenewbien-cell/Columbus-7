@@ -25,15 +25,35 @@ login_manager.login_message = 'Access denied. Authentication required.'
 
 # ─── DATABASE MODELS ──────────────────────────────────────────────────────────
 
-GUARDIAN_WALLET = "bc1qguardianwallet2026node-columbus-omega-v2"
+GUARDIAN_WALLET = "bc1qcolumbusguardian9x2node77-omega-v4"
+GUARDIAN_COL_WALLET = "COL-Ω-77A91F-CORE"
+
+# ─── CONVERSION RATES ────────────────────────────────────────────────────────
+BTC_USD = 26000
+COL_USD = 10
+
+def btc_to_col(btc):
+    return (btc * BTC_USD) / COL_USD
+
+def col_to_btc(col):
+    return (col * COL_USD) / BTC_USD
+
+def usd_to_col(usd):
+    return usd / COL_USD
+
+def col_to_usd(col):
+    return col * COL_USD
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(20), default='operator')
-    balance = db.Column(db.Float, default=1000.0)
+    balance = db.Column(db.Float, default=1000.0)      # COL balance
+    btc_balance = db.Column(db.Float, default=0.25)    # BTC balance
     wallet_address = db.Column(db.String(50), default='')
+    bank_name = db.Column(db.String(100), default='')
+    cashapp_tag = db.Column(db.String(50), default='')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def set_password(self, password):
@@ -206,13 +226,15 @@ def _auto_miner():
                     keys_used = [k.name for k in GuardianKey.query.limit(3).all()]
                     risk, analysis, fraud = ai_analyze_transaction(
                         utx['amount'], utx['sender_wallet'], utx['receiver_wallet'], 'TRANSFER')
+                    asset = utx.get('asset', 'COL')
+                    tx_type = 'BTC-TRANSFER' if asset == 'BTC' else 'USER-TRANSFER'
                     t = Transaction(
                         txid=utx['txid'],
                         sender=utx['sender_wallet'],
                         receiver=utx['receiver_wallet'],
                         amount=utx['amount'],
                         fee=utx['fee'],
-                        tx_type='USER-TRANSFER',
+                        tx_type=tx_type,
                         status='CONFIRMED',
                         guardian_keys=json.dumps(keys_used),
                         quantum_sig=make_quantum_sig(),
@@ -226,11 +248,14 @@ def _auto_miner():
                     if rv:
                         recv_db = User.query.get(rv.id)
                         if recv_db:
-                            recv_db.balance += utx['amount']
+                            if asset == 'BTC':
+                                recv_db.btc_balance = (recv_db.btc_balance or 0) + utx['amount']
+                            else:
+                                recv_db.balance += utx['amount']
                     db.session.commit()
                     all_txids.append(utx['txid'])
                     log_node_event('TX-Node',
-                        f"User TX confirmed: {utx['sender']} → {utx['receiver']} | {utx['amount']:,.4f} COL",
+                        f"User TX confirmed: {utx['sender']} → {utx['receiver']} | {utx['amount']:,.6f} {asset}",
                         'TX')
                 if all_txids:
                     miner = f"Columbus-Ω Node-{random.randint(1, 3)}"
@@ -280,29 +305,28 @@ pending_user_tx = []
 
 def init_db():
     db.create_all()
-    # Migrate: add balance/wallet_address columns if missing (existing DB)
+    # Migrate: add any missing columns to the user table
     import sqlite3 as _sqlite3
-    try:
-        _con = _sqlite3.connect('instance/columbus_omega.db')
-        _cur = _con.cursor()
-        _cur.execute("ALTER TABLE user ADD COLUMN balance REAL DEFAULT 1000.0")
-        _con.commit()
-        _con.close()
-    except Exception:
-        pass
-    try:
-        _con = _sqlite3.connect('instance/columbus_omega.db')
-        _cur = _con.cursor()
-        _cur.execute("ALTER TABLE user ADD COLUMN wallet_address TEXT DEFAULT ''")
-        _con.commit()
-        _con.close()
-    except Exception:
-        pass
+    _migrations = [
+        "ALTER TABLE user ADD COLUMN balance REAL DEFAULT 1000.0",
+        "ALTER TABLE user ADD COLUMN wallet_address TEXT DEFAULT ''",
+        "ALTER TABLE user ADD COLUMN btc_balance REAL DEFAULT 0.25",
+        "ALTER TABLE user ADD COLUMN bank_name TEXT DEFAULT ''",
+        "ALTER TABLE user ADD COLUMN cashapp_tag TEXT DEFAULT ''",
+    ]
+    for _sql in _migrations:
+        try:
+            _con = _sqlite3.connect('instance/columbus_omega.db')
+            _con.execute(_sql)
+            _con.commit()
+            _con.close()
+        except Exception:
+            pass
 
     # Create or update the primary admin account
     admin = User.query.filter_by(role='admin').first()
     if not admin:
-        admin = User(username='Columbus7', role='admin', balance=10000.0)
+        admin = User(username='Columbus7', role='admin', balance=10000.0, btc_balance=1.0)
         admin.set_password('Piercenewbien666')
         admin.wallet_address = make_wallet_address('Columbus7-guardian-2026')
         db.session.add(admin)
@@ -312,11 +336,15 @@ def init_db():
         admin.set_password('Piercenewbien666')
         if not admin.wallet_address:
             admin.wallet_address = make_wallet_address('Columbus7-guardian-2026')
+        if not admin.btc_balance or admin.btc_balance == 0:
+            admin.btc_balance = 1.0
         db.session.commit()
-    # Ensure all other users have wallet addresses
+    # Ensure all other users have wallet addresses + default BTC
     for u in User.query.filter(User.role != 'admin').all():
         if not u.wallet_address:
             u.wallet_address = make_wallet_address(u.username + str(u.id))
+        if u.btc_balance is None:
+            u.btc_balance = 0.25
     db.session.commit()
 
     if not GuardianKey.query.first():
@@ -478,7 +506,10 @@ def dashboard():
         keys=keys, vaults=vaults, latest_block=latest_block,
         recent_tx=recent_tx, total_key_balance=total_key_balance,
         total_vault_balance=total_vault_balance, total_tx=total_tx,
-        fraud_count=fraud_count, recent_activity=recent_activity)
+        fraud_count=fraud_count, recent_activity=recent_activity,
+        btc_usd=BTC_USD, col_usd=COL_USD,
+        guardian_wallet=GUARDIAN_WALLET,
+        guardian_col_wallet=GUARDIAN_COL_WALLET)
 
 @app.route('/transactions')
 @login_required
@@ -720,12 +751,13 @@ def register():
             flash('Operator ID already exists. Choose another.')
             return render_template('register.html')
         wallet = make_wallet_address(username + str(time.time()))
-        user = User(username=username, role='operator', balance=1000.0, wallet_address=wallet)
+        user = User(username=username, role='operator', balance=1000.0, btc_balance=0.25,
+                    wallet_address=wallet)
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
-        log_node_event('Auth-Node', f"New operator '{username}' registered. Wallet: {wallet[:16]}...", 'AUTH')
-        flash(f'Account created! Welcome, {username}. Starting balance: 1,000 COL. Please log in.')
+        log_node_event('Auth-Node', f"New operator '{username}' registered. Wallet: {wallet[:16]}... | 0.25 BTC + 1,000 COL granted.", 'AUTH')
+        flash(f'Account created! Welcome, {username}. Starting balance: 0.25 BTC + 1,000 COL. Please log in.')
         return redirect(url_for('login'))
     return render_template('register.html')
 
@@ -735,18 +767,28 @@ def send():
     if request.method == 'POST':
         receiver_input = request.form.get('receiver', '').strip()
         amount_str = request.form.get('amount', '0')
+        asset = request.form.get('asset', 'COL').upper()
         note = request.form.get('note', '')
+        if asset not in ('COL', 'BTC'):
+            flash('Invalid asset type. Choose COL or BTC.')
+            return redirect(request.referrer or url_for('send'))
         try:
             amount = float(amount_str)
         except ValueError:
             flash('Invalid amount.')
-            return redirect(url_for('send'))
+            return redirect(request.referrer or url_for('send'))
         if amount <= 0:
             flash('Amount must be greater than zero.')
-            return redirect(url_for('send'))
-        if amount > current_user.balance:
-            flash(f'Insufficient balance. You have {current_user.balance:,.4f} COL.')
-            return redirect(url_for('send'))
+            return redirect(request.referrer or url_for('send'))
+        # Balance check per asset
+        if asset == 'COL':
+            if amount > current_user.balance:
+                flash(f'Insufficient COL balance. You have {current_user.balance:,.4f} COL.')
+                return redirect(request.referrer or url_for('send'))
+        else:  # BTC
+            if amount > (current_user.btc_balance or 0):
+                flash(f'Insufficient BTC balance. You have {current_user.btc_balance:.8f} BTC.')
+                return redirect(request.referrer or url_for('send'))
         # Resolve receiver — by username or wallet address
         receiver_user = User.query.filter_by(username=receiver_input).first()
         if not receiver_user:
@@ -754,10 +796,16 @@ def send():
         receiver_addr = receiver_user.wallet_address if receiver_user else receiver_input
         if receiver_addr == current_user.wallet_address:
             flash('Cannot send to your own wallet.')
-            return redirect(url_for('send'))
-        fee = round(amount * 0.001, 6)
+            return redirect(request.referrer or url_for('send'))
+        fee = round(amount * 0.001, 8)
+        # Deduct from sender
+        if asset == 'COL':
+            current_user.balance -= amount
+        else:
+            current_user.btc_balance -= amount
+        db.session.commit()
         tx_entry = {
-            'txid': make_txid(f"{current_user.username}{receiver_addr}{amount}{time.time()}{random.random()}"),
+            'txid': make_txid(f"{current_user.username}{receiver_addr}{amount}{asset}{time.time()}{random.random()}"),
             'sender': current_user.username,
             'sender_wallet': current_user.wallet_address,
             'receiver': receiver_input,
@@ -765,20 +813,34 @@ def send():
             'receiver_user': receiver_user,
             'amount': amount,
             'fee': fee,
+            'asset': asset,
             'note': note,
         }
-        current_user.balance -= amount
-        db.session.commit()
         pending_user_tx.append(tx_entry)
         log_node_event('TX-Node',
-            f"User TX queued: {current_user.username} → {receiver_input} | {amount:,.4f} COL | Note: {note or 'None'}",
+            f"User TX queued: {current_user.username} → {receiver_input} | {amount:,.6f} {asset} | Note: {note or 'None'}",
             'TX')
-        flash(f'Transfer of {amount:,.4f} COL queued for mining! TXID: {tx_entry["txid"][:16]}...')
+        flash(f'Transfer of {amount:,.6f} {asset} queued for mining! TXID: {tx_entry["txid"][:16]}...')
         return redirect(url_for('send'))
     my_txs = Transaction.query.filter_by(sender=current_user.wallet_address)\
         .order_by(Transaction.timestamp.desc()).limit(8).all()
     return render_template('send.html', pending=pending_user_tx,
-                           my_txs=my_txs, guardian_wallet=GUARDIAN_WALLET)
+                           my_txs=my_txs, guardian_wallet=GUARDIAN_WALLET,
+                           guardian_col_wallet=GUARDIAN_COL_WALLET,
+                           btc_usd=BTC_USD, col_usd=COL_USD)
+
+@app.route('/profile', methods=['POST'])
+@login_required
+def profile():
+    bank = request.form.get('bank', '').strip()
+    cash = request.form.get('cash', '').strip()
+    current_user.bank_name = bank
+    current_user.cashapp_tag = cash
+    db.session.commit()
+    log_node_event('Profile-Node',
+        f"Operator '{current_user.username}' updated financial profile.", 'AUTH')
+    flash('Financial profile updated successfully.')
+    return redirect(request.referrer or url_for('dashboard'))
 
 @app.route('/guardian-qr')
 @login_required
