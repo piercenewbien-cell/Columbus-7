@@ -5,6 +5,7 @@ import json
 import io
 import base64
 import time
+import threading
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_file, session
 from flask_sqlalchemy import SQLAlchemy
@@ -91,6 +92,17 @@ class NodeActivity(db.Model):
     event_type = db.Column(db.String(30), default='INFO')
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
+class Citizen(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    citizen_id = db.Column(db.String(20), unique=True, nullable=False)
+    name = db.Column(db.String(120), nullable=False)
+    gender = db.Column(db.String(1), default='M')
+    country = db.Column(db.String(80), default='Columbus Nation')
+    birth_date = db.Column(db.DateTime, nullable=True)
+    status = db.Column(db.String(20), default='ACTIVE')
+    notes = db.Column(db.String(200), default='')
+    registered_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -150,6 +162,48 @@ def log_node_event(node_id, event, event_type='INFO'):
     entry = NodeActivity(node_id=node_id, event=event, event_type=event_type)
     db.session.add(entry)
     db.session.commit()
+
+# ─── BTC PRICE SIMULATION ─────────────────────────────────────────────────────
+
+_btc_state = {
+    'price': 67420.00,
+    'open': 66000.00,
+    'high': 68200.00,
+    'low': 65800.00,
+    'change_pct': 2.14,
+}
+
+def _tick_btc_price():
+    while True:
+        p = _btc_state['price']
+        p = p * (1 + (random.random() - 0.495) * 0.003)
+        p = round(p, 2)
+        if p > _btc_state['high']:
+            _btc_state['high'] = p
+        if p < _btc_state['low']:
+            _btc_state['low'] = p
+        _btc_state['price'] = p
+        _btc_state['change_pct'] = round((p - _btc_state['open']) / _btc_state['open'] * 100, 2)
+        time.sleep(4)
+
+# ─── BACKGROUND AUTO-MINER ───────────────────────────────────────────────────
+
+def _auto_miner():
+    time.sleep(20)
+    while True:
+        try:
+            with app.app_context():
+                pending = Transaction.query.filter_by(block_number=None, status='CONFIRMED').limit(5).all()
+                if pending:
+                    txids = [t.txid for t in pending]
+                    miner = f"Columbus-Ω Node-{random.randint(1, 3)}"
+                    block = mine_block(txids, miner=miner)
+                    for t in pending:
+                        t.block_number = block.block_number
+                    db.session.commit()
+        except Exception:
+            pass
+        time.sleep(10)
 
 def get_latest_block():
     return Block.query.order_by(Block.block_number.desc()).first()
@@ -238,6 +292,42 @@ def init_db():
 
     if Transaction.query.count() < 15:
         seed_transactions()
+
+    if Citizen.query.count() < 20:
+        seed_citizens()
+
+def seed_citizens():
+    first_names = ['James', 'Maria', 'David', 'Sofia', 'Carlos', 'Elena', 'Omar', 'Amara',
+                   'Lucas', 'Leila', 'Kevin', 'Fatima', 'Andre', 'Yuki', 'Hassan', 'Nina',
+                   'Samuel', 'Priya', 'Felix', 'Ingrid', 'Diego', 'Zara', 'Marcus', 'Aisha']
+    last_names = ['Rivera', 'Chen', 'Okafor', 'Petrov', 'Santos', 'Ibrahim', 'Nakamura',
+                  'Mueller', 'Diallo', 'Patel', 'Kowalski', 'Andersen', 'Torres', 'Nguyen',
+                  'Mensah', 'Rossi', 'Yamamoto', 'Fernandez', 'Kim', 'Haile']
+    countries = ['Columbus Nation', 'Columbus Nation', 'Columbus Nation', 'Columbus Nation',
+                 'Abroad-North', 'Abroad-South', 'Abroad-East', 'Abroad-West']
+    statuses = ['ACTIVE', 'ACTIVE', 'ACTIVE', 'ACTIVE', 'ACTIVE',
+                'MIGRANT', 'MIGRANT', 'DECEASED', 'PENDING']
+    genders = ['M', 'F', 'M', 'F', 'M', 'F', 'O']
+    for i in range(40):
+        name = f"{random.choice(first_names)} {random.choice(last_names)}"
+        cid = f"CIT-{random.randint(100000, 999999)}"
+        status = random.choice(statuses)
+        gender = random.choice(genders)
+        country = random.choice(countries)
+        if status == 'MIGRANT':
+            country = random.choice(countries[4:])
+        birth_year = random.randint(1950, 2005)
+        birth_date = datetime(birth_year, random.randint(1, 12), random.randint(1, 28))
+        notes_pool = ['Veteran', 'Business owner', 'Registered voter', 'Dual citizen',
+                      'Student visa', 'Work permit', 'Retired', '', '', '']
+        c = Citizen(
+            citizen_id=cid, name=name, gender=gender, country=country,
+            birth_date=birth_date, status=status,
+            notes=random.choice(notes_pool),
+            registered_at=datetime.utcnow() - timedelta(days=random.randint(1, 1000))
+        )
+        db.session.add(c)
+    db.session.commit()
 
 def seed_transactions():
     vaults = VaultLayer.query.all()
@@ -537,7 +627,114 @@ def api_generate_tx():
         'risk': risk, 'fraud': fraud, 'analysis': analysis
     })
 
+@app.route('/converter')
+@login_required
+def converter():
+    return render_template('converter.html')
+
+@app.route('/population')
+@login_required
+def population():
+    page = request.args.get('page', 1, type=int)
+    status_filter = request.args.get('status', '')
+    query = Citizen.query
+    if status_filter:
+        query = query.filter_by(status=status_filter)
+    citizens = query.order_by(Citizen.registered_at.desc()).paginate(page=page, per_page=20)
+    today = datetime.utcnow().date()
+    stats = {
+        'total': Citizen.query.count(),
+        'active': Citizen.query.filter_by(status='ACTIVE').count(),
+        'migrant': Citizen.query.filter_by(status='MIGRANT').count(),
+        'deceased': Citizen.query.filter_by(status='DECEASED').count(),
+        'pending': Citizen.query.filter_by(status='PENDING').count(),
+        'births_today': Citizen.query.filter(
+            Citizen.status == 'ACTIVE',
+            db.func.date(Citizen.registered_at) == today
+        ).count(),
+        'deaths_today': Citizen.query.filter(
+            Citizen.status == 'DECEASED',
+            db.func.date(Citizen.registered_at) == today
+        ).count(),
+    }
+    return render_template('population.html', citizens=citizens, stats=stats,
+                           status_filter=status_filter, datetime=datetime)
+
+@app.route('/population/add', methods=['POST'])
+@login_required
+def population_add():
+    name = request.form.get('name', '').strip()
+    country = request.form.get('country', 'Columbus Nation').strip()
+    status = request.form.get('status', 'ACTIVE')
+    gender = request.form.get('gender', 'M')
+    notes = request.form.get('notes', '')
+    birth_str = request.form.get('birth_date', '')
+    birth_date = None
+    if birth_str:
+        try:
+            birth_date = datetime.strptime(birth_str, '%Y-%m-%d')
+        except ValueError:
+            pass
+    if not name:
+        flash('Name is required.')
+        return redirect(url_for('population'))
+    cid = f"CIT-{random.randint(100000, 999999)}"
+    while Citizen.query.filter_by(citizen_id=cid).first():
+        cid = f"CIT-{random.randint(100000, 999999)}"
+    c = Citizen(citizen_id=cid, name=name, gender=gender, country=country,
+                birth_date=birth_date, status=status, notes=notes)
+    db.session.add(c)
+    db.session.commit()
+    log_node_event('Pop-Registry', f"New citizen registered: {name} | ID: {cid} | Status: {status}", 'TX')
+    flash(f'Citizen {name} registered with ID {cid}.')
+    return redirect(url_for('population'))
+
+@app.route('/population/update/<int:cid>')
+@login_required
+def population_update(cid):
+    c = Citizen.query.get_or_404(cid)
+    new_status = request.args.get('status', 'ACTIVE')
+    old_status = c.status
+    c.status = new_status
+    db.session.commit()
+    log_node_event('Pop-Registry', f"Citizen {c.name} status changed: {old_status} → {new_status}", 'INFO')
+    flash(f'{c.name} status updated to {new_status}.')
+    return redirect(url_for('population'))
+
+@app.route('/api/btc-price')
+@login_required
+def api_btc_price():
+    return jsonify({
+        'price': round(_btc_state['price'], 2),
+        'high': round(_btc_state['high'], 2),
+        'low': round(_btc_state['low'], 2),
+        'change_pct': _btc_state['change_pct'],
+        'open': round(_btc_state['open'], 2),
+    })
+
+@app.route('/api/population/stats')
+@login_required
+def api_population_stats():
+    today = datetime.utcnow().date()
+    return jsonify({
+        'total': Citizen.query.count(),
+        'active': Citizen.query.filter_by(status='ACTIVE').count(),
+        'migrant': Citizen.query.filter_by(status='MIGRANT').count(),
+        'deceased': Citizen.query.filter_by(status='DECEASED').count(),
+        'pending': Citizen.query.filter_by(status='PENDING').count(),
+        'births_today': Citizen.query.filter(
+            Citizen.status == 'ACTIVE',
+            db.func.date(Citizen.registered_at) == today
+        ).count(),
+        'deaths_today': Citizen.query.filter(
+            Citizen.status == 'DECEASED',
+            db.func.date(Citizen.registered_at) == today
+        ).count(),
+    })
+
 if __name__ == '__main__':
     with app.app_context():
         init_db()
+    threading.Thread(target=_tick_btc_price, daemon=True).start()
+    threading.Thread(target=_auto_miner, daemon=True).start()
     app.run(host='0.0.0.0', port=5000, debug=False)

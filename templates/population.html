@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+{% block title %}| Population Ledger{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">NATIONAL POPULATION LEDGER</div>
+    <div class="page-subtitle">CITIZEN REGISTRY · BIRTHS · DEATHS · MIGRATION · STATUS</div>
+  </div>
+  <div class="page-actions">
+    <button class="btn btn-green btn-sm" onclick="toggleAddForm()">✦ ADD CITIZEN</button>
+  </div>
+</div>
+
+<!-- Population Stats -->
+<div class="stats-grid" style="grid-template-columns:repeat(5,1fr);">
+  <div class="stat-card">
+    <div class="stat-icon">👥</div>
+    <div class="stat-label">Total Citizens</div>
+    <div class="stat-value" id="statTotal">{{ stats.total }}</div>
+    <div class="stat-sub">REGISTERED</div>
+  </div>
+  <div class="stat-card cyan">
+    <div class="stat-icon">✦</div>
+    <div class="stat-label">Active</div>
+    <div class="stat-value" id="statActive">{{ stats.active }}</div>
+    <div class="stat-sub">IN COUNTRY</div>
+  </div>
+  <div class="stat-card purple">
+    <div class="stat-icon">✈</div>
+    <div class="stat-label">Migrants</div>
+    <div class="stat-value" id="statMigrant">{{ stats.migrant }}</div>
+    <div class="stat-sub">ABROAD</div>
+  </div>
+  <div class="stat-card orange">
+    <div class="stat-icon">🌱</div>
+    <div class="stat-label">Births (Today)</div>
+    <div class="stat-value" id="statBirths">{{ stats.births_today }}</div>
+    <div class="stat-sub">REGISTERED</div>
+  </div>
+  <div class="stat-card red">
+    <div class="stat-icon">†</div>
+    <div class="stat-label">Deaths (Today)</div>
+    <div class="stat-value" id="statDeaths">{{ stats.deaths_today }}</div>
+    <div class="stat-sub">REGISTERED</div>
+  </div>
+</div>
+
+<!-- Add Citizen Form (hidden by default) -->
+<div id="addForm" style="display:none;" class="card" style="margin-bottom:16px;">
+  <div class="card-title">✦ REGISTER NEW CITIZEN</div>
+  <form method="POST" action="{{ url_for('population_add') }}" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;align-items:end;">
+    <div class="form-group" style="margin:0;">
+      <label class="form-label">Full Name</label>
+      <input type="text" name="name" class="form-control" placeholder="Full name" required>
+    </div>
+    <div class="form-group" style="margin:0;">
+      <label class="form-label">Country of Origin</label>
+      <input type="text" name="country" class="form-control" placeholder="Country" value="Columbus Nation">
+    </div>
+    <div class="form-group" style="margin:0;">
+      <label class="form-label">Date of Birth</label>
+      <input type="date" name="birth_date" class="form-control">
+    </div>
+    <div class="form-group" style="margin:0;">
+      <label class="form-label">Status</label>
+      <select name="status" class="form-control">
+        <option value="ACTIVE">ACTIVE</option>
+        <option value="MIGRANT">MIGRANT</option>
+        <option value="DECEASED">DECEASED</option>
+        <option value="PENDING">PENDING</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0;">
+      <label class="form-label">Gender</label>
+      <select name="gender" class="form-control">
+        <option value="M">Male</option>
+        <option value="F">Female</option>
+        <option value="O">Other</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin:0;">
+      <label class="form-label">Notes</label>
+      <input type="text" name="notes" class="form-control" placeholder="Optional notes">
+    </div>
+    <div style="grid-column:span 3;display:flex;gap:8px;">
+      <button type="submit" class="btn btn-green">✦ REGISTER CITIZEN</button>
+      <button type="button" class="btn btn-cyan" onclick="toggleAddForm()">CANCEL</button>
+    </div>
+  </form>
+</div>
+
+<!-- Filter & Search -->
+<div class="card" style="margin-bottom:16px;padding:12px 20px;">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+    <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;">FILTER:</span>
+    <a href="{{ url_for('population') }}" class="btn btn-sm {% if not status_filter %}btn-green{% else %}btn-cyan{% endif %}">ALL</a>
+    <a href="{{ url_for('population', status='ACTIVE') }}" class="btn btn-sm {% if status_filter == 'ACTIVE' %}btn-green{% else %}btn-cyan{% endif %}">ACTIVE</a>
+    <a href="{{ url_for('population', status='MIGRANT') }}" class="btn btn-sm {% if status_filter == 'MIGRANT' %}btn-purple{% else %}btn-cyan{% endif %}">MIGRANT</a>
+    <a href="{{ url_for('population', status='DECEASED') }}" class="btn btn-sm {% if status_filter == 'DECEASED' %}btn-red{% else %}btn-cyan{% endif %}">DECEASED</a>
+    <a href="{{ url_for('population', status='PENDING') }}" class="btn btn-sm {% if status_filter == 'PENDING' %}btn-orange{% else %}btn-cyan{% endif %}">PENDING</a>
+    <div style="margin-left:auto;display:flex;gap:8px;">
+      <input type="text" id="searchInput" class="form-control" style="width:200px;padding:6px 12px;" placeholder="Search name or ID..." oninput="filterTable(this.value)">
+    </div>
+  </div>
+</div>
+
+<!-- Citizen Table -->
+<div class="card">
+  <div class="card-title">
+    <span>👥 CITIZEN REGISTRY</span>
+    <span style="float:right;color:var(--green);">{{ citizens.total }} RECORDS</span>
+  </div>
+  <div class="table-container">
+    <table id="citizenTable">
+      <thead>
+        <tr>
+          <th>CITIZEN ID</th>
+          <th>FULL NAME</th>
+          <th>GENDER</th>
+          <th>COUNTRY</th>
+          <th>DATE OF BIRTH</th>
+          <th>AGE</th>
+          <th>STATUS</th>
+          <th>REGISTERED</th>
+          <th>NOTES</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in citizens.items %}
+        <tr>
+          <td class="txid-cell" style="color:var(--cyan);">{{ c.citizen_id }}</td>
+          <td style="font-family:var(--font-body);color:var(--text);">{{ c.name }}</td>
+          <td style="font-family:var(--font-mono);font-size:11px;">{{ c.gender or '—' }}</td>
+          <td style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">{{ c.country }}</td>
+          <td style="font-family:var(--font-mono);font-size:11px;">
+            {{ c.birth_date.strftime('%Y-%m-%d') if c.birth_date else '—' }}
+          </td>
+          <td style="font-family:var(--font-mono);font-size:11px;color:var(--cyan);">
+            {% if c.birth_date %}{{ ((datetime.utcnow() - c.birth_date).days // 365) }}{% else %}—{% endif %}
+          </td>
+          <td>
+            {% if c.status == 'ACTIVE' %}<span class="badge badge-green">ACTIVE</span>
+            {% elif c.status == 'MIGRANT' %}<span class="badge badge-purple">MIGRANT</span>
+            {% elif c.status == 'DECEASED' %}<span class="badge badge-red">DECEASED</span>
+            {% elif c.status == 'PENDING' %}<span class="badge badge-orange">PENDING</span>
+            {% else %}<span class="badge badge-cyan">{{ c.status }}</span>{% endif %}
+          </td>
+          <td style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">
+            {{ c.registered_at.strftime('%Y-%m-%d') }}
+          </td>
+          <td style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+            {{ c.notes or '—' }}
+          </td>
+          <td>
+            <div style="display:flex;gap:4px;">
+              <a href="{{ url_for('population_update', cid=c.id, status='ACTIVE') }}" class="btn btn-green btn-sm" title="Set Active">✓</a>
+              <a href="{{ url_for('population_update', cid=c.id, status='MIGRANT') }}" class="btn btn-cyan btn-sm" title="Set Migrant">✈</a>
+              <a href="{{ url_for('population_update', cid=c.id, status='DECEASED') }}" class="btn btn-red btn-sm" title="Set Deceased">†</a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination">
+    {% if citizens.has_prev %}
+      <a href="{{ url_for('population', page=citizens.prev_num, status=status_filter) }}" class="page-btn">◀ PREV</a>
+    {% endif %}
+    {% for p in citizens.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+      {% if p %}
+        <a href="{{ url_for('population', page=p, status=status_filter) }}" class="page-btn {% if p == citizens.page %}active{% endif %}">{{ p }}</a>
+      {% else %}
+        <span class="page-btn">…</span>
+      {% endif %}
+    {% endfor %}
+    {% if citizens.has_next %}
+      <a href="{{ url_for('population', page=citizens.next_num, status=status_filter) }}" class="page-btn">NEXT ▶</a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Live Population Counter -->
+<div class="grid-2" style="margin-top:16px;">
+  <div class="card">
+    <div class="card-title">📊 POPULATION BREAKDOWN</div>
+    {% set total = stats.total or 1 %}
+    {% set groups = [('ACTIVE', stats.active, 'green'), ('MIGRANT', stats.migrant, 'purple'), ('DECEASED', stats.deceased, 'red'), ('PENDING', stats.pending, 'orange')] %}
+    {% for label, count, color in groups %}
+    <div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--{{ color }});">{{ label }}</span>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text);">{{ count }} <span style="color:var(--text-dim);">({{ "%.1f"|format(count/total*100) }}%)</span></span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width:{{ count/total*100 }}%;background:var(--{{ color }});"></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="card">
+    <div class="card-title">📡 LIVE POPULATION EVENTS</div>
+    <div id="popEventFeed" style="font-family:var(--font-mono);font-size:11px;max-height:200px;overflow-y:auto;">
+      <div class="activity-item INFO">
+        <span class="activity-time">—</span>
+        <span class="activity-text" style="color:var(--text-dim);">Waiting for population events...</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function toggleAddForm() {
+  const f = document.getElementById('addForm');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+
+function filterTable(query) {
+  const rows = document.querySelectorAll('#citizenTable tbody tr');
+  const q = query.toLowerCase();
+  rows.forEach(row => {
+    const text = row.textContent.toLowerCase();
+    row.style.display = text.includes(q) ? '' : 'none';
+  });
+}
+
+// Simulate live population events
+const eventTypes = [
+  { text: 'New birth registered', type: 'INFO', icon: '🌱' },
+  { text: 'Citizen status updated to MIGRANT', type: 'WARN', icon: '✈' },
+  { text: 'Death record filed', type: 'WARN', icon: '†' },
+  { text: 'New citizen registration submitted', type: 'TX', icon: '✦' },
+  { text: 'Migration permit approved', type: 'AUTH', icon: '✓' },
+  { text: 'ID verification completed', type: 'BLOCK', icon: '⬡' },
+];
+
+function addPopEvent() {
+  const ev = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+  const now = new Date().toLocaleTimeString('en-US', {hour12:false});
+  const feed = document.getElementById('popEventFeed');
+  const div = document.createElement('div');
+  div.className = `activity-item ${ev.type}`;
+  div.innerHTML = `<span class="activity-time">${now}</span><span class="activity-text">${ev.icon} ${ev.text}</span>`;
+  feed.insertBefore(div, feed.firstChild);
+  if (feed.children.length > 15) feed.removeChild(feed.lastChild);
+}
+
+setInterval(addPopEvent, 5000);
+
+// Fetch live stats
+function refreshStats() {
+  fetch('/api/population/stats').then(r => r.json()).then(d => {
+    document.getElementById('statTotal').textContent = d.total;
+    document.getElementById('statActive').textContent = d.active;
+    document.getElementById('statMigrant').textContent = d.migrant;
+    document.getElementById('statBirths').textContent = d.births_today;
+    document.getElementById('statDeaths').textContent = d.deaths_today;
+  }).catch(() => {});
+}
+setInterval(refreshStats, 15000);
+</script>
+{% endblock %}

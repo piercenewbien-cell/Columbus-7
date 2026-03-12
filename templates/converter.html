@@ -1,0 +1,311 @@
+{% extends 'base.html' %}
+{% block title %}| BTC Converter{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <div class="page-title">BTC CONVERTER</div>
+    <div class="page-subtitle">REAL-TIME USD ↔ BTC SIMULATION · LIVE MARKET DATA</div>
+  </div>
+</div>
+
+<!-- Live Price Banner -->
+<div class="card" style="margin-bottom:16px;background:linear-gradient(135deg,rgba(0,255,136,0.06),rgba(0,212,255,0.06));">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;">
+    <div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:3px;margin-bottom:4px;">BITCOIN LIVE PRICE</div>
+      <div style="display:flex;align-items:baseline;gap:12px;">
+        <span id="btcPrice" style="font-family:var(--font-head);font-size:40px;font-weight:900;color:var(--green);text-shadow:0 0 30px rgba(0,255,136,0.5);">$67,420.00</span>
+        <span id="priceChange" style="font-family:var(--font-mono);font-size:14px;color:var(--green);">▲ +2.14%</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:30px;">
+      <div style="text-align:center;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;">24H HIGH</div>
+        <div id="priceHigh" style="font-family:var(--font-head);font-size:16px;color:var(--cyan);font-weight:700;">$68,200</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;">24H LOW</div>
+        <div id="priceLow" style="font-family:var(--font-head);font-size:16px;color:var(--orange);font-weight:700;">$65,800</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;">MARKET CAP</div>
+        <div id="marketCap" style="font-family:var(--font-head);font-size:16px;color:var(--purple);font-weight:700;">$1.32T</div>
+      </div>
+      <div style="text-align:center;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;">DOMINANCE</div>
+        <div style="font-family:var(--font-head);font-size:16px;color:var(--yellow);font-weight:700;">52.4%</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Converter Panels -->
+<div class="grid-2" style="margin-bottom:16px;">
+  <!-- USD to BTC -->
+  <div class="card">
+    <div class="card-title">💵 USD → BTC</div>
+    <div class="form-group">
+      <label class="form-label">Amount in USD ($)</label>
+      <input type="number" id="usdInput" class="form-control" placeholder="Enter USD amount" step="0.01" min="0" oninput="convertUsdToBtc()">
+    </div>
+    <div style="text-align:center;padding:10px 0;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">≡</div>
+    <div style="background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:3px;padding:16px;text-align:center;">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px;">YOU GET</div>
+      <div id="btcResult" style="font-family:var(--font-head);font-size:28px;font-weight:900;color:var(--green);">0.00000000</div>
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);margin-top:4px;">BTC</div>
+    </div>
+    <div style="margin-top:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+      <button class="btn btn-cyan btn-sm" onclick="setUsd(100)">$100</button>
+      <button class="btn btn-cyan btn-sm" onclick="setUsd(1000)">$1K</button>
+      <button class="btn btn-cyan btn-sm" onclick="setUsd(10000)">$10K</button>
+      <button class="btn btn-cyan btn-sm" onclick="setUsd(100000)">$100K</button>
+    </div>
+  </div>
+
+  <!-- BTC to USD -->
+  <div class="card">
+    <div class="card-title">₿ BTC → USD</div>
+    <div class="form-group">
+      <label class="form-label">Amount in BTC (₿)</label>
+      <input type="number" id="btcInput" class="form-control" placeholder="Enter BTC amount" step="0.00000001" min="0" oninput="convertBtcToUsd()">
+    </div>
+    <div style="text-align:center;padding:10px 0;font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">≡</div>
+    <div style="background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:3px;padding:16px;text-align:center;">
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px;">YOU GET</div>
+      <div id="usdResult" style="font-family:var(--font-head);font-size:28px;font-weight:900;color:var(--orange);">$0.00</div>
+      <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim);margin-top:4px;">USD</div>
+    </div>
+    <div style="margin-top:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+      <button class="btn btn-orange btn-sm" onclick="setBtc(0.001)">0.001</button>
+      <button class="btn btn-orange btn-sm" onclick="setBtc(0.01)">0.01</button>
+      <button class="btn btn-orange btn-sm" onclick="setBtc(0.1)">0.1</button>
+      <button class="btn btn-orange btn-sm" onclick="setBtc(1)">1 BTC</button>
+    </div>
+  </div>
+</div>
+
+<!-- Multi-currency -->
+<div class="card" style="margin-bottom:16px;">
+  <div class="card-title">🌐 MULTI-CURRENCY EQUIVALENT</div>
+  <div id="multiCurrency" style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding-top:4px;">
+    <div class="currency-box" data-rate="1" data-symbol="$" data-code="USD">
+      <div class="currency-code">USD</div><div class="currency-flag">🇺🇸</div>
+      <div class="currency-value">-</div>
+    </div>
+    <div class="currency-box" data-rate="0.93" data-symbol="€" data-code="EUR">
+      <div class="currency-code">EUR</div><div class="currency-flag">🇪🇺</div>
+      <div class="currency-value">-</div>
+    </div>
+    <div class="currency-box" data-rate="0.79" data-symbol="£" data-code="GBP">
+      <div class="currency-code">GBP</div><div class="currency-flag">🇬🇧</div>
+      <div class="currency-value">-</div>
+    </div>
+    <div class="currency-box" data-rate="149.2" data-symbol="¥" data-code="JPY">
+      <div class="currency-code">JPY</div><div class="currency-flag">🇯🇵</div>
+      <div class="currency-value">-</div>
+    </div>
+    <div class="currency-box" data-rate="1.36" data-symbol="C$" data-code="CAD">
+      <div class="currency-code">CAD</div><div class="currency-flag">🇨🇦</div>
+      <div class="currency-value">-</div>
+    </div>
+    <div class="currency-box" data-rate="83.2" data-symbol="₹" data-code="INR">
+      <div class="currency-code">INR</div><div class="currency-flag">🇮🇳</div>
+      <div class="currency-value">-</div>
+    </div>
+  </div>
+</div>
+
+<!-- Price Chart Simulation -->
+<div class="grid-2">
+  <div class="card">
+    <div class="card-title">📈 PRICE HISTORY (SIMULATED)</div>
+    <canvas id="priceChart" height="160" style="width:100%;"></canvas>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚡ CONVERSION HISTORY</div>
+    <div id="conversionHistory" style="font-family:var(--font-mono);font-size:11px;max-height:200px;overflow-y:auto;">
+      <div style="color:var(--text-dim);padding:20px;text-align:center;">No conversions yet. Enter an amount above.</div>
+    </div>
+  </div>
+</div>
+
+<style>
+.currency-box {
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px;
+  text-align: center;
+  transition: border-color 0.2s;
+}
+.currency-box:hover { border-color: var(--green); }
+.currency-code { font-family: var(--font-head); font-size: 13px; color: var(--cyan); font-weight: 700; }
+.currency-flag { font-size: 20px; margin: 4px 0; }
+.currency-value { font-family: var(--font-mono); font-size: 11px; color: var(--green); }
+</style>
+
+{% endblock %}
+{% block scripts %}
+<script>
+let currentBtcPrice = 67420;
+let priceHistory = [];
+let highPrice = 68200;
+let lowPrice = 65800;
+let conversionLog = [];
+
+function formatNum(n, decimals=2) {
+  return n.toLocaleString('en-US', {minimumFractionDigits: decimals, maximumFractionDigits: decimals});
+}
+
+function updatePrice() {
+  fetch('/api/btc-price').then(r => r.json()).then(d => {
+    const old = currentBtcPrice;
+    currentBtcPrice = d.price;
+    highPrice = d.high;
+    lowPrice = d.low;
+
+    const change = ((currentBtcPrice - old) / old * 100);
+    const el = document.getElementById('btcPrice');
+    el.textContent = '$' + formatNum(currentBtcPrice, 2);
+    el.style.color = currentBtcPrice >= old ? 'var(--green)' : 'var(--red)';
+
+    const chEl = document.getElementById('priceChange');
+    chEl.textContent = (d.change_pct >= 0 ? '▲ +' : '▼ ') + formatNum(d.change_pct, 2) + '%';
+    chEl.style.color = d.change_pct >= 0 ? 'var(--green)' : 'var(--red)';
+
+    document.getElementById('priceHigh').textContent = '$' + formatNum(highPrice, 0);
+    document.getElementById('priceLow').textContent = '$' + formatNum(lowPrice, 0);
+    document.getElementById('marketCap').textContent = '$' + formatNum(currentBtcPrice * 19.7e6 / 1e12, 2) + 'T';
+
+    priceHistory.push(currentBtcPrice);
+    if (priceHistory.length > 30) priceHistory.shift();
+    drawChart();
+
+    // Re-run conversions
+    if (document.getElementById('usdInput').value) convertUsdToBtc();
+    if (document.getElementById('btcInput').value) convertBtcToUsd();
+    updateMultiCurrency(currentBtcPrice);
+  }).catch(() => {
+    // Simulate locally if fetch fails
+    currentBtcPrice = currentBtcPrice * (1 + (Math.random() - 0.495) * 0.002);
+    currentBtcPrice = Math.round(currentBtcPrice * 100) / 100;
+    document.getElementById('btcPrice').textContent = '$' + formatNum(currentBtcPrice, 2);
+    priceHistory.push(currentBtcPrice);
+    if (priceHistory.length > 30) priceHistory.shift();
+    drawChart();
+  });
+}
+
+function convertUsdToBtc() {
+  const usd = parseFloat(document.getElementById('usdInput').value) || 0;
+  const btc = usd / currentBtcPrice;
+  document.getElementById('btcResult').textContent = btc.toFixed(8);
+  if (usd > 0) addToHistory(`$${formatNum(usd)} USD → ₿${btc.toFixed(8)}`);
+  updateMultiCurrency(usd, false);
+}
+
+function convertBtcToUsd() {
+  const btc = parseFloat(document.getElementById('btcInput').value) || 0;
+  const usd = btc * currentBtcPrice;
+  document.getElementById('usdResult').textContent = '$' + formatNum(usd, 2);
+  if (btc > 0) addToHistory(`₿${btc} → $${formatNum(usd, 2)} USD`);
+  updateMultiCurrency(usd, false);
+}
+
+function setUsd(amount) {
+  document.getElementById('usdInput').value = amount;
+  convertUsdToBtc();
+}
+
+function setBtc(amount) {
+  document.getElementById('btcInput').value = amount;
+  convertBtcToUsd();
+}
+
+function updateMultiCurrency(usdValue, fromBtc=true) {
+  const boxes = document.querySelectorAll('.currency-box');
+  boxes.forEach(box => {
+    const rate = parseFloat(box.dataset.rate);
+    const symbol = box.dataset.symbol;
+    const value = usdValue * rate;
+    box.querySelector('.currency-value').textContent = symbol + formatNum(value, 0);
+  });
+}
+
+function addToHistory(entry) {
+  conversionLog.unshift({text: entry, time: new Date().toLocaleTimeString('en-US', {hour12:false})});
+  if (conversionLog.length > 20) conversionLog.pop();
+  const el = document.getElementById('conversionHistory');
+  el.innerHTML = conversionLog.map(c => `
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">
+      <span style="color:var(--text);">${c.text}</span>
+      <span style="color:var(--text-dim);white-space:nowrap;margin-left:8px;">${c.time}</span>
+    </div>
+  `).join('');
+}
+
+// Chart
+function drawChart() {
+  const canvas = document.getElementById('priceChart');
+  if (!canvas || priceHistory.length < 2) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+  canvas.height = 160 * window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+  const W = canvas.offsetWidth;
+  const H = 160;
+  ctx.clearRect(0, 0, W, H);
+
+  const min = Math.min(...priceHistory) * 0.9995;
+  const max = Math.max(...priceHistory) * 1.0005;
+  const range = max - min || 1;
+
+  const pts = priceHistory.map((p, i) => ({
+    x: (i / (priceHistory.length - 1)) * W,
+    y: H - ((p - min) / range) * (H - 20) - 10
+  }));
+
+  // Fill
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  pts.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(W, H);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, 'rgba(0,255,136,0.2)');
+  grad.addColorStop(1, 'rgba(0,255,136,0)');
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+  ctx.strokeStyle = '#00ff88';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Current price label
+  const last = pts[pts.length - 1];
+  ctx.fillStyle = '#00ff88';
+  ctx.font = '10px monospace';
+  ctx.fillText('$' + formatNum(priceHistory[priceHistory.length-1], 0), last.x - 50, last.y - 5);
+}
+
+// Initialize with some data
+for (let i = 0; i < 20; i++) {
+  currentBtcPrice = currentBtcPrice * (1 + (Math.random() - 0.495) * 0.003);
+  priceHistory.push(Math.round(currentBtcPrice * 100) / 100);
+}
+drawChart();
+
+// Set initial multi-currency
+updateMultiCurrency(currentBtcPrice);
+
+// Live updates every 4 seconds
+setInterval(updatePrice, 4000);
+updatePrice();
+</script>
+{% endblock %}
